@@ -1,3 +1,0 @@
-[submodule "tools/c2v"]
-	path = tools/c2v
-	url = https://github.com/tech-srl/code2vec.git
