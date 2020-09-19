@@ -15,6 +15,11 @@ import com.github.javaparser.ParseException;
 import JavaExtractor.Common.CommandLineValues;
 import JavaExtractor.Common.Common;
 import JavaExtractor.FeaturesEntities.ProgramFeatures;
+import spoon.Launcher;
+import spoon.SpoonException;
+import spoon.refactoring.CtRenameGenericVariableRefactoring;
+import spoon.reflect.declaration.*;
+import spoon.support.compiler.VirtualFile;
 
 public class ExtractFeaturesTask implements Callable<Void> {
     CommandLineValues m_CommandLineValues;
@@ -38,6 +43,87 @@ public class ExtractFeaturesTask implements Callable<Void> {
         processFile();
         //System.err.println("Done with file: " + filePath);
         return null;
+    }
+
+    public void obfuscateCode() {
+        try {
+            Collection<CtType<?>> allTypes = returnAllTypes(code);
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            for (CtType classOrInterface : allTypes) {
+                try {
+                    String obfuscated = obfuscateToCtClass((CtClass<?>) classOrInterface).toString();
+
+                    if (!obfuscated.equals("")) {
+                        stringBuilder.append(obfuscated).append("\n\n");
+                    }
+                } catch (ClassCastException e) {
+//                System.err.println("Сouldn't cast to class, might be interface");
+                }
+            }
+            code = stringBuilder.append("\n\n").toString();
+        } catch (Exception e) {
+            System.err.println("Ignored: " + e.getMessage());
+        }
+
+    }
+
+    private CtClass obfuscateToCtClass(CtClass newClass) {
+        try {
+            for (Object oMethod : newClass.getMethods()) {
+                CtMethod method = (CtMethod) oMethod;
+
+                method.getElements(element ->
+                        element.getClass() == spoon.support.reflect.declaration.CtParameterImpl.class
+                ).forEach(parameter -> {
+                    CtParameter param = (CtParameter) parameter;
+                    obfuscateVariable(param);
+                });
+
+                method.getElements(element -> element.getClass() == spoon.support.reflect.code.CtLocalVariableImpl.class
+                ).forEach(
+                        variable -> {
+                            CtVariable var = (CtVariable) variable;
+                            obfuscateVariable(var);
+                        }
+                );
+            }
+            return newClass;
+        } catch (SpoonException e) {
+            System.err.println("\tFile:\t" + filePath.toString() + "\t" + e);
+            return null;
+        } catch (Exception e) {
+            System.err.print(filePath.toString() + " - ");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void obfuscateVariable(CtVariable var) {
+        if (var == null || var.getType() == null) {
+            return;
+        }
+        String newName = generateName(12);
+        new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
+    }
+
+    private String generateName(int length) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            stringBuilder.append((char) ('a' + (int) (Math.random() * 26)));
+        }
+        return stringBuilder.toString();
+    }
+
+
+    private Collection<CtType<?>> returnAllTypes(String code) {
+        Launcher launcher = new Launcher();
+        launcher.addInputResource(new VirtualFile(code));
+        launcher.getEnvironment().setNoClasspath(true);
+        launcher.getEnvironment().setAutoImports(true);
+        return launcher.buildModel().getAllTypes();
+
     }
 
     public void processFile() {

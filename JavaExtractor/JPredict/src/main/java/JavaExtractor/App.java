@@ -55,6 +55,9 @@ public class App {
 			return;
 		}
 		try {
+			if (s_CommandLineValues.Obfuscate){
+				tasks.forEach(ExtractFeaturesTask::obfuscateCode);
+			}
 			executor.invokeAll(tasks);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
