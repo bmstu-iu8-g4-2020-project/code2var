@@ -47,7 +47,7 @@ PATH_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.path.vocab
 mkdir -p dataset
 mkdir -p dataset/${DATASET_NAME}
 
-cd JavaExtractor/JPredict/ && mvn package && cd ../..
+cd JavaExtractor/JPredict/ && mvn clean install && cd ../..
 
 
 if [ ${OBFUSCATING} = true ]
@@ -59,33 +59,33 @@ fi
 # Extract AST path for code2vec
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} > ${TRAIN_PATH_VEC}
+  --dir ${TRAIN_FILES_DIR} --obfuscate true > ${TRAIN_PATH_VEC}
 echo "Done. Generated ${TRAIN_PATH_VEC}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} > ${TEST_PATH_VEC}
+  --dir ${TEST_FILES_DIR} --obfuscate true > ${TEST_PATH_VEC}
 echo "Done. Generated ${TEST_PATH_VEC}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} > ${VALIDATION_PATH_VEC}
+  --dir ${VALIDATION_FILES_DIR} --obfuscate true > ${VALIDATION_PATH_VEC}
 echo "Done. Generated ${VALIDATION_PATH_VEC}"
 
 # Extract AST path for code2var
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --only_for_vars true > ${TRAIN_PATH_VAR}
+  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate true> ${TRAIN_PATH_VAR}
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --only_for_vars true> ${TEST_PATH_VAR}
+  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate true> ${TEST_PATH_VAR}
 echo "Done. Generated ${TEST_PATH_VAR}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --only_for_vars true> ${VALIDATION_PATH_VAR}
+  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate true> ${VALIDATION_PATH_VAR}
 echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 
