@@ -30,11 +30,12 @@ def ExtractFeaturesForDir(args, dir, prefix):
                '--dir', dir, '--num_threads', str(args.num_threads)]
     if args.only_vars:
         command += ['--only_for_vars']
-    if not args.obfuscate:
-        command += ['--obfuscate false']
+    # if not args.obfuscate:
+    #     command += ['--obfuscate']
 
     # print command
-    os.system(" ".join(command))
+    # os.system(" ".join(command))
+    print(" ".join(command))
     kill = lambda process: process.kill()
     outputFileName = TMP_DIR + prefix + dir.split('/')[-1]
     failed = False
@@ -98,8 +99,8 @@ if __name__ == '__main__':
                   ' --file ' + args.file
         if args.only_vars:
             command += ' --only_for_vars '
-        if not args.obfuscate:
-            command += ' --obfuscate false'
+        # if not args.obfuscate:
+        #     command += ' --obfuscate false'
         os.system(command)
     elif args.dir is not None:
         subdirs = get_immediate_subdirectories(args.dir)

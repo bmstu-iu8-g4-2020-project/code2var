@@ -47,6 +47,7 @@ public class ExtractFeaturesTask implements Callable<Void> {
 
     public void obfuscateCode() {
         try {
+
             Collection<CtType<?>> allTypes = returnAllTypes(code);
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -59,12 +60,12 @@ public class ExtractFeaturesTask implements Callable<Void> {
                         stringBuilder.append(obfuscated).append("\n\n");
                     }
                 } catch (ClassCastException e) {
-//                System.err.println("Сouldn't cast to class, might be interface");
+//                System.out.println("Сouldn't cast to class, might be interface");
                 }
             }
             code = stringBuilder.append("\n\n").toString();
         } catch (Exception e) {
-            System.err.println("Ignored: " + e.getMessage());
+//            System.out.println("Ignored: " + e.getMessage());
         }
 
     }

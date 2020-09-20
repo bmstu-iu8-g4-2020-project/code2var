@@ -47,7 +47,7 @@ PATH_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.path.vocab
 mkdir -p dataset
 mkdir -p dataset/${DATASET_NAME}
 
-cd JavaExtractor/JPredict/ && mvn package && cd ../..
+cd JavaExtractor/JPredict/ && mvn clean install && cd ../..
 
 
 if [ ${OBFUSCATING} = true ]
