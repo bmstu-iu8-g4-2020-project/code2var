@@ -43,7 +43,7 @@ public class CommandLineValues {
 	public boolean OnlyVars = false;
 
 	@Option(name = "--obfuscate", required = false)
-	public boolean Obfuscate = true;
+	public boolean Obfuscate = false;
 
 
 	public CommandLineValues(String... args) throws CmdLineException {
