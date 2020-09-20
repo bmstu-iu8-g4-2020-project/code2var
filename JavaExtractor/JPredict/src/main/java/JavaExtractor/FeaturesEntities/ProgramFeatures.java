@@ -46,4 +46,7 @@ public class ProgramFeatures {
 		return features;
 	}
 
+    public void setName(String s) {
+		name = s;
+    }
 }
