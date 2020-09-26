@@ -13,8 +13,8 @@ from subprocess import Popen, PIPE, STDOUT, call
 
 
 def get_immediate_subdirectories(a_dir):
-    return [(os.path.join(a_dir, name)) for name in os.listdir(a_dir)
-            if os.path.isdir(os.path.join(a_dir, name))]
+    return ((os.path.join(a_dir, name)) for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name)))
 
 
 TMP_DIR = ""
@@ -29,7 +29,7 @@ def ExtractFeaturesForDir(args, dir, prefix):
                '--max_path_length', str(args.max_path_length), '--max_path_width', str(args.max_path_width),
                '--dir', dir, '--num_threads', str(args.num_threads)]
     if args.only_vars:
-        command += ['--only_for_vars']
+        command += ['--variables']
     if args.obfuscate:
         command += ['--obfuscate']
 
@@ -71,7 +71,7 @@ def ExtractFeaturesForDirsList(args, dirs):
     os.makedirs(TMP_DIR)
     try:
         p = multiprocessing.Pool(4)
-        p.starmap(ParallelExtractDir, zip(itertools.repeat(args), dirs))
+        p.starmap(ParallelExtractDir, zip(itertools.repeat(args), list(dirs)))
         # for dir in dirs:
         #    ExtractFeaturesForDir(args, dir, '')
         output_files = os.listdir(TMP_DIR)
@@ -105,6 +105,6 @@ if __name__ == '__main__':
     elif args.dir is not None:
         subdirs = get_immediate_subdirectories(args.dir)
         to_extract = subdirs
-        if len(subdirs) == 0:
+        if sys.getsizeof(subdirs) == 0:
             to_extract = [args.dir.rstrip('/')]
         ExtractFeaturesForDirsList(args, to_extract)
