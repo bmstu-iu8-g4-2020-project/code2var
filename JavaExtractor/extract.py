@@ -12,13 +12,13 @@ from argparse import ArgumentParser
 from subprocess import Popen, PIPE, STDOUT, call
 
 
-
 def get_immediate_subdirectories(a_dir):
-    return [(os.path.join(a_dir, name)) for name in os.listdir(a_dir)
-            if os.path.isdir(os.path.join(a_dir, name))]
+    return ((os.path.join(a_dir, name)) for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name)))
 
 
 TMP_DIR = ""
+
 
 def ParallelExtractDir(args, dir):
     ExtractFeaturesForDir(args, dir, "")
@@ -28,9 +28,14 @@ def ExtractFeaturesForDir(args, dir, prefix):
     command = ['java', '-cp', args.jar, 'JavaExtractor.App',
                '--max_path_length', str(args.max_path_length), '--max_path_width', str(args.max_path_width),
                '--dir', dir, '--num_threads', str(args.num_threads)]
+    if args.only_vars:
+        command += ['--variables']
+    if args.obfuscate:
+        command += ['--obfuscate']
 
     # print command
-    # os.system(command)
+    # os.system(" ".join(command))
+    # print(" ".join(command))
     kill = lambda process: process.kill()
     outputFileName = TMP_DIR + prefix + dir.split('/')[-1]
     failed = False
@@ -66,8 +71,8 @@ def ExtractFeaturesForDirsList(args, dirs):
     os.makedirs(TMP_DIR)
     try:
         p = multiprocessing.Pool(4)
-        p.starmap(ParallelExtractDir, zip(itertools.repeat(args), dirs))
-        #for dir in dirs:
+        p.starmap(ParallelExtractDir, zip(itertools.repeat(args), list(dirs)))
+        # for dir in dirs:
         #    ExtractFeaturesForDir(args, dir, '')
         output_files = os.listdir(TMP_DIR)
         for f in output_files:
@@ -82,19 +87,24 @@ if __name__ == '__main__':
     parser.add_argument("-maxwidth", "--max_path_width", dest="max_path_width", required=False, default=2)
     parser.add_argument("-threads", "--num_threads", dest="num_threads", required=False, default=64)
     parser.add_argument("-j", "--jar", dest="jar", required=True)
-    parser.add_argument("-dir", "--dir", dest="dir", required=False)
+    parser.add_argument("-d", "--dir", dest="dir", required=False)
     parser.add_argument("-file", "--file", dest="file", required=False)
+    parser.add_argument("--only_for_vars", dest="only_vars", required=False, default=False)
+    parser.add_argument("--obfuscate", dest="obfuscate", required=False, default=False)
     args = parser.parse_args()
 
     if args.file is not None:
-        command = 'java -cp ' + args.jar + ' JavaExtractor.App --max_path_length ' + \
-                  str(args.max_path_length) + ' --max_path_width ' + str(args.max_path_width) + ' --file ' + args.file
-        os.system(command)
+        command = ['java -cp', args.jar, 'JavaExtractor.App', '--max_path_length ',
+                   str(args.max_path_length), '--max_path_width', str(args.max_path_width),
+                   '--file', args.file]
+        if args.only_vars:
+            command += ['--only_for_vars']
+        if args.obfuscate:
+            command += ['--obfuscate']
+        os.system(" ".join(command))
     elif args.dir is not None:
         subdirs = get_immediate_subdirectories(args.dir)
         to_extract = subdirs
-        if len(subdirs) == 0:
+        if sys.getsizeof(subdirs) == 0:
             to_extract = [args.dir.rstrip('/')]
         ExtractFeaturesForDirsList(args, to_extract)
-
-

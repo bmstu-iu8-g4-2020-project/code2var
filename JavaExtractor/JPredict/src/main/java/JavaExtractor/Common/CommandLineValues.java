@@ -39,6 +39,13 @@ public class CommandLineValues {
 	@Option(name = "--max_child_id", required = false)
 	public int MaxChildId = Integer.MAX_VALUE;
 
+	@Option(name = "--variables", required = false)
+	public boolean OnlyVars = false;
+
+	@Option(name = "--obfuscate", required = false)
+	public boolean Obfuscate = false;
+
+
 	public CommandLineValues(String... args) throws CmdLineException {
 		CmdLineParser parser = new CmdLineParser(this);
 		try {

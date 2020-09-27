@@ -30,7 +30,12 @@ public class App {
 		if (s_CommandLineValues.File != null) {
 			ExtractFeaturesTask extractFeaturesTask = new ExtractFeaturesTask(s_CommandLineValues,
 					s_CommandLineValues.File.toPath());
-			extractFeaturesTask.processFile();
+			try {
+				extractFeaturesTask.call();
+			}
+			catch (Exception e){
+				e.printStackTrace();
+			}
 		} else if (s_CommandLineValues.Dir != null) {
 			extractDir();
 		}
@@ -50,6 +55,11 @@ public class App {
 			return;
 		}
 		try {
+			if (s_CommandLineValues.Obfuscate){
+//				System.out.println("Hi!");
+				tasks.forEach(ExtractFeaturesTask::obfuscateCode);
+
+			}
 			executor.invokeAll(tasks);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
