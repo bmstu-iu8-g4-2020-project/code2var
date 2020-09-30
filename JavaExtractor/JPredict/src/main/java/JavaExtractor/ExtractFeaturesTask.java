@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -26,6 +27,8 @@ public class ExtractFeaturesTask implements Callable<Void> {
     Path filePath;
     String code = null;
 
+    HashMap<String, String> obfuscatedNames;
+
     public ExtractFeaturesTask(CommandLineValues commandLineValues, Path path) {
         m_CommandLineValues = commandLineValues;
         this.filePath = path;
@@ -35,6 +38,7 @@ public class ExtractFeaturesTask implements Callable<Void> {
             e.printStackTrace();
             code = Common.EmptyString;
         }
+        obfuscatedNames = new HashMap<String, String>();
     }
 
     @Override
@@ -47,7 +51,6 @@ public class ExtractFeaturesTask implements Callable<Void> {
 
     public void obfuscateCode() {
         try {
-
             Collection<CtType<?>> allTypes = returnAllTypes(code);
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -106,6 +109,7 @@ public class ExtractFeaturesTask implements Callable<Void> {
             return;
         }
         String newName = generateName(12);
+        obfuscatedNames.put(newName, var.getSimpleName());
         new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
     }
 
@@ -149,7 +153,11 @@ public class ExtractFeaturesTask implements Callable<Void> {
         FeatureExtractor featureExtractor = new FeatureExtractor(m_CommandLineValues);
 
         ArrayList<ProgramFeatures> features = featureExtractor.extractFeatures(code);
-
+        if (m_CommandLineValues.OnlyVars && m_CommandLineValues.Obfuscate){
+            for (ProgramFeatures feature: features){
+                feature.setName(obfuscatedNames.get(feature.getName()));
+            }
+        }
         return features;
     }
 

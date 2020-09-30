@@ -28,11 +28,12 @@ def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
         print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
-def process_file(file_path, data_file_role, dataset_name, word_to_count, path_to_count, max_contexts, out_file_path):
+def process_file(file_path, max_contexts, out_file_path):
     with open(file_path, 'r') as file:
         with open(out_file_path + '.csv', 'w') as output:
             for line in file:
                 contexts = line.rstrip('\n').split(" ")
+                assert len(contexts) > 0
                 target, contexts = contexts[0], contexts[1:]
                 if len(contexts) > max_contexts:
                     contexts = random.sample(contexts, max_contexts)
@@ -75,8 +76,7 @@ if __name__ == '__main__':
 
     for data_path, data_role in zip([test_data_path_vec, val_data_path_vec, train_data_path_vec],
                                     ['test_vec', 'val_vec', 'train_vec', 'test_var', 'val_var', 'train_var']):
-        process_file(file_path=data_path, data_file_role=data_role, dataset_name=args.output_name,
-                     word_to_count=word_freq, path_to_count=path_freq,
+        process_file(file_path=data_path,
                      max_contexts=int(args.max_contexts), out_file_path=args.output_name)
 
     save_dictionaries(target_freq=target_freq, path_freq=path_freq, word_freq=word_freq,
