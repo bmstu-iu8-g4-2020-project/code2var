@@ -1,0 +1,6 @@
+
+class config:
+    TRAINING_FREQ_DICTS = ""
+    CREATE = True
+    DEFAULT_LOOKUP_VALUE = -1
+    MAX_NUMBER_OF_WORDS_IN_FREQ_DICT = 1301136
