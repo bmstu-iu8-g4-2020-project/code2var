@@ -25,7 +25,7 @@ class Vocab:
         return cls(word_freq=sorted_by_occurrences)
 
     @classmethod
-    def load_from_file(cls, file: typing.BinaryIO,  special_words: typing.Optional[Namespace] = Namespace()):
+    def load_from_file(cls, file: typing.BinaryIO, special_words: typing.Optional[Namespace] = Namespace()):
         w_t_i = pickle.load(file)
         i_t_w = pickle.load(file)
         special_words_size = pickle.load(file)
@@ -50,27 +50,27 @@ class Vocab:
     @staticmethod
     def create_word_to_index_lookup_table(word_to_index: typing.Dict[str, int], default_value: int):
         return tf.lookup.StaticHashTable(
-            tf.lookup.KeyValueTensorInitializer(word_to_index.keys(), word_to_index.values(),
+            tf.lookup.KeyValueTensorInitializer(list(word_to_index.keys()), list(word_to_index.values()),
                                                 key_dtype=tf.string, value_dtype=tf.int32),
             default_value=tf.constant(default_value, tf.int32))
 
     @staticmethod
-    def create_index_to_word_lookup_table(index_to_word: typing.Dict[int, str], default_value: int):
+    def create_index_to_word_lookup_table(index_to_word: typing.Dict[int, str], default_value: str):
         return tf.lookup.StaticHashTable(
-            tf.lookup.KeyValueTensorInitializer(index_to_word.keys(), index_to_word.values(),
+            tf.lookup.KeyValueTensorInitializer(list(index_to_word.keys()), list(index_to_word.values()),
                                                 key_dtype=tf.int32, value_dtype=tf.string),
-            default_value=tf.constant(default_value, tf.int32))
+            default_value=tf.constant(default_value, tf.string))
 
     def get_word_to_index_lookup_table(self) -> tf.lookup.StaticHashTable:
         if self.lookup_table_word_to_index is None:
             self.lookup_table_word_to_index = self.create_word_to_index_lookup_table(self.word_to_index,
-                                                                                     config.config.DEFAULT_LOOKUP_VALUE)
+                                                                                     config.config.DEFAULT_INT32_LOOKUP_VALUE)
         return self.lookup_table_word_to_index
 
     def get_index_to_word_lookup_table(self) -> tf.lookup.StaticHashTable:
         if self.lookup_table_index_to_word is None:
             self.lookup_table_index_to_word = self.create_index_to_word_lookup_table(self.index_to_word,
-                                                                                     config.config.DEFAULT_LOOKUP_VALUE)
+                                                                                     config.config.DEFAULT_STRING_LOOKUP_VALUE)
         return self.lookup_table_index_to_word
 
 
@@ -90,10 +90,10 @@ class Code2VecVocabs:
         self.path_vocab: typing.Optional[Vocab] = None
         self.target_vocab: typing.Optional[Vocab] = None
 
-        if config.config.CREATE:
+        if config.config.CREATE_VOCAB:
             self._create()
         else:
-            self._load()
+            self._load(config.config.CODE2VEC_VOCABS_PATH)
 
     def _create(self):
         freq_dicts = self._load_freq_dicts()
