@@ -21,11 +21,12 @@ class Vocab:
         sorted_by_occurrences = sorted(freq_dict, key=lambda word: freq_dict[word])
         if len(sorted_by_occurrences) > config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT:
             sorted_by_occurrences = sorted_by_occurrences[:config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT]
-
+        print("Creating vocab from frequency dictionary of", len(sorted_by_occurrences), "elements")
         return cls(word_freq=sorted_by_occurrences)
 
     @classmethod
     def load_from_file(cls, file: typing.BinaryIO, special_words: typing.Optional[Namespace] = Namespace()):
+        print("Loading from file...")
         w_t_i = pickle.load(file)
         i_t_w = pickle.load(file)
         special_words_size = pickle.load(file)
@@ -38,14 +39,17 @@ class Vocab:
         vocab.word_to_index.update(w_t_i)
         vocab.index_to_word = {i: word for i, word in enumerate(special_words.__dict__.keys())}
         vocab.index_to_word.update(i_t_w)
+        print("Loaded vocab of", len(vocab.word_to_index), "elements")
         return vocab
 
     def save_to_file(self, file: typing.BinaryIO):
+        print("Saving vocab to file...")
         w_t_i_wo_special = {word: i for word, i in self.word_to_index.items() if i >= self.number_of_special}
         i_t_w_wo_special = {i: word for i, word in self.index_to_word.items() if i >= self.number_of_special}
         pickle.dump(w_t_i_wo_special, file)
         pickle.dump(i_t_w_wo_special, file)
         pickle.dump(self.number_of_special, file)
+        print("Vocab successfully saved")
 
     @staticmethod
     def create_word_to_index_lookup_table(word_to_index: typing.Dict[str, int], default_value: int):
@@ -96,15 +100,27 @@ class Code2VecVocabs:
             self._load(config.config.CODE2VEC_VOCABS_PATH)
 
     def _create(self):
+        print("Creating vocab from", config.config.TRAINING_FREQ_DICTS)
         freq_dicts = self._load_freq_dicts()
+        print("Creating token vocab")
         self.token_vocab = Vocab.create_from_freq_dict(freq_dicts.token_freq_dict)
+        print("Created token vocab")
+        print("Creating path vocab")
         self.path_vocab = Vocab.create_from_freq_dict(freq_dicts.path_freq_dict)
+        print("Created path vocab")
+        print("Creating target vocab")
         self.target_vocab = Vocab.create_from_freq_dict(freq_dicts.target_freq_dict)
+        print("Created target vocab")
+        print("Created all vocabs")
 
     def _load_freq_dicts(self):
         with open(config.config.TRAINING_FREQ_DICTS, 'rb') as file:
+            print ("Loading frequency dicts from", config.config.TRAINING_FREQ_DICTS)
+            print("Loading token freq dict")
             token_freq_dict = pickle.load(file)
+            print("Loading path freq dict")
             path_freq_dict = pickle.load(file)
+            print("Loading target freq dict")
             target_freq_dict = pickle.load(file)
         return Code2VecFreqDicts(token_freq_dict=token_freq_dict, path_freq_dict=path_freq_dict,
                                  target_freq_dict=target_freq_dict)
@@ -112,6 +128,7 @@ class Code2VecVocabs:
     def save(self, path: str):
         if path not in self.already_saved_paths:
             with open(path, 'wb') as file:
+                print("Saving Code2VecVocabs to", path)
                 self.target_vocab.save_to_file(file)
                 self.path_vocab.save_to_file(file)
                 self.token_vocab.save_to_file(file)
@@ -119,7 +136,14 @@ class Code2VecVocabs:
 
     def _load(self, path: str):
         with open(path, 'rb') as file:
+            print("Loading Code2VecVocabs from", path)
+            print("Loading target vocab")
             self.target_vocab = Vocab.load_from_file(file)
+            print("Loaded target vocab")
+            print("Loading path vocab")
             self.path_vocab = Vocab.load_from_file(file)
+            print("Loaded path vocab")
+            print("Loading token vocab")
             self.token_vocab = Vocab.load_from_file(file)
+            print("Loaded token vocab")
             self.already_saved_paths.add(path)
