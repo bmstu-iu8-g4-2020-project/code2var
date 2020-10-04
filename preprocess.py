@@ -22,9 +22,9 @@ def parse_vocab(path, min_frequency=1):
 def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
     output_file_path = output_filename + ".c2v.dict"
     with open(output_file_path, "wb") as file:
-        pickle.dump(target_freq, file)
         pickle.dump(word_freq, file)
         pickle.dump(path_freq, file)
+        pickle.dump(target_freq, file)
         print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
