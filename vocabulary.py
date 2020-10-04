@@ -103,7 +103,7 @@ class Code2VecVocabs:
             self._load(config.config.CODE2VEC_VOCABS_PATH)
 
     def _create(self):
-        print("Creating vocab from", config.config.TRAINING_FREQ_DICTS)
+        print("Creating vocab from", config.config.TRAINING_FREQ_DICTS_PATH)
         freq_dicts = self._load_freq_dicts()
         print("Creating token vocab")
         self.token_vocab = Vocab.create_from_freq_dict(freq_dicts.token_freq_dict)
@@ -117,8 +117,8 @@ class Code2VecVocabs:
         print("Created all vocabs")
 
     def _load_freq_dicts(self):
-        with open(config.config.TRAINING_FREQ_DICTS, 'rb') as file:
-            print("Loading frequency dicts from", config.config.TRAINING_FREQ_DICTS)
+        with open(config.config.TRAINING_FREQ_DICTS_PATH, 'rb') as file:
+            print("Loading frequency dicts from", config.config.TRAINING_FREQ_DICTS_PATH)
             print("Loading token freq dict")
             token_freq_dict = pickle.load(file)
             print("Loading path freq dict")
