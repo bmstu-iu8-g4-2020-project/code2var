@@ -1,31 +1,32 @@
 import pickle
-import typing
 from argparse import Namespace
 import tensorflow as tf
 
 import config
 
+from typing import List, Optional, Dict, BinaryIO, NamedTuple, Set
+
 
 class Vocab:
     """Implements vocabulary for code2vec model"""
 
-    def __init__(self, word_freq: typing.List[str], special_words: typing.Optional[Namespace] = Namespace()):
-        self.word_to_index = {word: i for i, word in enumerate([*special_words.__dict__.keys(), *word_freq])}
-        self.index_to_word = {i: word for word, i in zip(self.word_to_index.keys(), self.word_to_index.values())}
+    def __init__(self, words: List[str], special_words: Optional[Namespace] = Namespace()):
+        self.word_to_index = {word: i for i, word in enumerate([*special_words.__dict__.items(), *words])}
+        self.index_to_word = {i: word for word, i in self.word_to_index.items()}
         self.number_of_special = len(special_words.__dict__)
         self.lookup_table_word_to_index = None
         self.lookup_table_index_to_word = None
 
     @classmethod
-    def create_from_freq_dict(cls, freq_dict: typing.Dict[str, int]):
+    def create_from_freq_dict(cls, freq_dict: Dict[str, int]):
         sorted_by_occurrences = sorted(freq_dict, key=lambda word: freq_dict[word])
         if len(sorted_by_occurrences) > config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT:
             sorted_by_occurrences = sorted_by_occurrences[:config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT]
         print("Creating vocab from frequency dictionary of", len(sorted_by_occurrences), "elements")
-        return cls(word_freq=sorted_by_occurrences)
+        return cls(words=sorted_by_occurrences)
 
     @classmethod
-    def load_from_file(cls, file: typing.BinaryIO, special_words: typing.Optional[Namespace] = Namespace()):
+    def load_from_file(cls, file: BinaryIO, special_words: Optional[Namespace] = Namespace()):
         print("Loading from file...")
         w_t_i = pickle.load(file)
         i_t_w = pickle.load(file)
@@ -35,14 +36,15 @@ class Vocab:
                 "Wrong special words providen: expected length: " + str(special_words_size) + ", but " + str(
                     len(special_words.__dict__)) + " were given")
         vocab = Vocab([], special_words)
-        vocab.word_to_index = {word: i for i, word in enumerate(special_words.__dict__.keys())}
-        vocab.word_to_index.update(w_t_i)
-        vocab.index_to_word = {i: word for i, word in enumerate(special_words.__dict__.keys())}
-        vocab.index_to_word.update(i_t_w)
+        vocab.index_to_word = i_t_w
+        vocab.word_to_index = w_t_i
+        for idx, word in enumerate(special_words.__dict__.keys()):
+            vocab.word_to_index[word] = idx
+            vocab.index_to_word[idx] = word
         print("Loaded vocab of", len(vocab.word_to_index), "elements")
         return vocab
 
-    def save_to_file(self, file: typing.BinaryIO):
+    def save_to_file(self, file: BinaryIO):
         print("Saving vocab to file...")
         w_t_i_wo_special = {word: i for word, i in self.word_to_index.items() if i >= self.number_of_special}
         i_t_w_wo_special = {i: word for i, word in self.index_to_word.items() if i >= self.number_of_special}
@@ -52,14 +54,14 @@ class Vocab:
         print("Vocab successfully saved")
 
     @staticmethod
-    def create_word_to_index_lookup_table(word_to_index: typing.Dict[str, int], default_value: int):
+    def create_word_to_index_lookup_table(word_to_index: Dict[str, int], default_value: int):
         return tf.lookup.StaticHashTable(
             tf.lookup.KeyValueTensorInitializer(list(word_to_index.keys()), list(word_to_index.values()),
                                                 key_dtype=tf.string, value_dtype=tf.int32),
             default_value=tf.constant(default_value, tf.int32))
 
     @staticmethod
-    def create_index_to_word_lookup_table(index_to_word: typing.Dict[int, str], default_value: str):
+    def create_index_to_word_lookup_table(index_to_word: Dict[int, str], default_value: str):
         return tf.lookup.StaticHashTable(
             tf.lookup.KeyValueTensorInitializer(list(index_to_word.keys()), list(index_to_word.values()),
                                                 key_dtype=tf.int32, value_dtype=tf.string),
@@ -78,10 +80,10 @@ class Vocab:
         return self.lookup_table_index_to_word
 
 
-WordFreqDictType = typing.Dict[str, int]
+WordFreqDictType = Dict[str, int]
 
 
-class Code2VecFreqDicts(typing.NamedTuple):
+class Code2VecFreqDicts(NamedTuple):
     token_freq_dict: WordFreqDictType
     path_freq_dict: WordFreqDictType
     target_freq_dict: WordFreqDictType
@@ -89,10 +91,10 @@ class Code2VecFreqDicts(typing.NamedTuple):
 
 class Code2VecVocabs:
     def __init__(self):
-        self.already_saved_paths: typing.Set[str] = set()
-        self.token_vocab: typing.Optional[Vocab] = None
-        self.path_vocab: typing.Optional[Vocab] = None
-        self.target_vocab: typing.Optional[Vocab] = None
+        self.already_saved_paths: Set[str] = set()
+        self.token_vocab: Optional[Vocab] = None
+        self.path_vocab: Optional[Vocab] = None
+        self.target_vocab: Optional[Vocab] = None
 
         if config.config.CREATE_VOCAB:
             self._create()
@@ -115,7 +117,7 @@ class Code2VecVocabs:
 
     def _load_freq_dicts(self):
         with open(config.config.TRAINING_FREQ_DICTS, 'rb') as file:
-            print ("Loading frequency dicts from", config.config.TRAINING_FREQ_DICTS)
+            print("Loading frequency dicts from", config.config.TRAINING_FREQ_DICTS)
             print("Loading token freq dict")
             token_freq_dict = pickle.load(file)
             print("Loading path freq dict")
