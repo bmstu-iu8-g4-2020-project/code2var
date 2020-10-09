@@ -127,6 +127,7 @@ class Code2VecVocabs:
 
   @logged_vocab_method('_load_freq_dicts')
   def _load_freq_dicts(self):
+    print(config.TRAINING_FREQ_DICTS_PATH)
     with open(config.TRAINING_FREQ_DICTS_PATH, "rb") as file:
       print("Loading token freq dict")
       token_freq_dict = pickle.load(file)

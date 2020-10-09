@@ -1,9 +1,12 @@
+from typing import Callable, Optional
+
 import time
 
 
-# TODO(Mocurin): Introduce logging module?
 # TODO(Mocurin): Add docstrings
-def lambda_logger(f1, f2, timefmt='%H:%M:%S:', verbose=True):
+def lambda_logger(f1: Optional[Callable] = None,
+                  f2: Optional[Callable] = None,
+                  timefmt='%H:%M:%S:', verbose=True):
     def logging_decorator(function):
         if not verbose: return function
 
@@ -20,7 +23,9 @@ def lambda_logger(f1, f2, timefmt='%H:%M:%S:', verbose=True):
     return logging_decorator
 
 
-def string_logger(s1, s2, *args, **kwargs):
+def string_logger(s1: Optional[str] = None,
+                  s2: Optional[str] = None,
+                  *args, **kwargs):
     return lambda_logger(lambda *_, **__: s1 if s1 else None,
                          lambda *_, **__: s2 if s2 else None,
                          *args, **kwargs)
