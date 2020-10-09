@@ -4,7 +4,7 @@ from misc.logging import string_logger, lambda_logger
 
 # TODO(Mocurin): Add docstrings
 class Config:
-    verbose = False
+    verbose = True
     timefmt = '%H:%M:%S:'
     methods = None
 
