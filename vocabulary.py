@@ -97,6 +97,8 @@ class Vocab:
                 config.config.DEFAULT_STRING_LOOKUP_VALUE)
         return self.lookup_table_index_to_word
 
+    def get_lookup_index(self, word):
+        return self.get_word_to_index_lookup_table().lookup(word)
 
 WordFreqDictType = Dict[str, int]
 
