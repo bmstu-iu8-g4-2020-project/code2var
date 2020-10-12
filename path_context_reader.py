@@ -60,10 +60,10 @@ class PathContextReader:
                 p_s.append(path_source)
                 p.append(path)
                 p_t.append(path_target)
-            # else:
-            #     p_s.append("")
-            #     p.append(0)
-            #     p_t.append("")
+            else:
+                p_s.append("")
+                p.append("")
+                p_t.append("")
         path_sources, paths, path_targets = tf.constant(p_s), \
                                             tf.constant(p), tf.constant(p_t)
         path_sources_lookup = self.vocabs.token_vocab.get_lookup_index(
