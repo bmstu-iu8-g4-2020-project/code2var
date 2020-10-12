@@ -1,5 +1,7 @@
 import math
 from typing import NamedTuple, Optional
+
+import config
 from vocabulary import Code2VecVocabs
 
 import tensorflow as tf
@@ -42,10 +44,9 @@ class PathContextReader:
         self._read_input_tensors()
 
     def _read_input_tensors(self) -> ReaderInputTensors:
-        data = pd.read_csv(self.csv_path, sep=' ', header=None)
-        data_tensors = [self._generate_input_tensor(line) for line in
-                        data.values]
-
+        d = tf.data.experimental.CsvDataset(self.csv_path, [""] * (
+                config.config.MAX_CONTEXTS + 1), field_delim=' ')
+        data_tensors = [self._generate_input_tensor(line) for line in d]
 
     def _generate_input_tensor(self, line) -> ReaderInputTensors:
         """Parses line to ReaderInputTensors"""
@@ -53,19 +54,12 @@ class PathContextReader:
         target_index = self.vocabs.target_vocab.get_word_to_index_lookup_table().lookup(
             target)
 
-        p_s, p, p_t = [], [], []
-        for context in line[1:]:
-            if type(context) == str:
-                (path_source, path, path_target) = context.split(",")
-                p_s.append(path_source)
-                p.append(path)
-                p_t.append(path_target)
-            else:
-                p_s.append("")
-                p.append("")
-                p_t.append("")
-        path_sources, paths, path_targets = tf.constant(p_s), \
-                                            tf.constant(p), tf.constant(p_t)
+        contexts = tf.strings.split(tf.stack(line[1:]), sep=",").to_tensor()
+
+        path_sources = tf.slice(contexts, [0, 0], [-1, 1])
+        paths = tf.slice(contexts, [0, 1], [-1, 1])
+        path_targets = tf.slice(contexts, [0, 2], [-1, 1])
+
         path_sources_lookup = self.vocabs.token_vocab.get_lookup_index(
             path_sources)
         paths_lookup = self.vocabs.token_vocab.get_lookup_index(
