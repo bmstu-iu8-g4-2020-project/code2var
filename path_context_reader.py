@@ -1,11 +1,9 @@
-import math
 from typing import NamedTuple, Optional
 
 import config
 from vocabulary import Code2VecVocabs
 
 import tensorflow as tf
-import pandas as pd
 
 
 class ReaderInputTensors(NamedTuple):
@@ -28,10 +26,16 @@ class PathContextReader:
     """
 
     def __init__(self, vocabs: Code2VecVocabs, csv_path: str,
-                 repeat_dataset: bool = False):
+                 is_train: bool, repeat_dataset: bool = False):
+        self.is_train = is_train
+        self.repeat = repeat_dataset
         self.vocabs = vocabs
         self.csv_path = csv_path
         self.dataset: Optional[tf.data.Dataset] = None
+
+        self.vocabs.token_vocab.create_word_lookup()
+        self.vocabs.path_vocab.create_word_lookup()
+        self.vocabs.target_vocab.create_word_lookup()
 
     def get_dataset(self) -> tf.data.Dataset:
         """Returns suitable dataset for code2vec and code2var"""
@@ -41,16 +45,26 @@ class PathContextReader:
 
     def _generate_dataset(self) -> tf.data.Dataset:
         """Generates dataset for code2vec|code2var from vocabs"""
-        self._read_input_tensors()
+        dataset = tf.data.experimental.CsvDataset(self.csv_path, [""] * (
+                config.config.MAX_CONTEXTS + 1), field_delim=" ",
+                                                  use_quote_delim=False)
 
-    def _read_input_tensors(self) -> ReaderInputTensors:
-        d = tf.data.experimental.CsvDataset(self.csv_path, [""] * (
-                config.config.MAX_CONTEXTS + 1), field_delim=' ')
-        data_tensors = [self._generate_input_tensor(line) for line in d]
+        if self.repeat:
+            dataset = dataset.repeat()
+        if self.is_train:
+            if not self.repeat and config.config.NUM_TRAIN_EPOCHS > 1:
+                dataset = dataset.repeat(config.config.NUM_TRAIN_EPOCHS)
+            dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
+                                      reshuffle_each_iteration=True)
+        dataset = dataset.map(self._generate_input_tensors)
 
-    def _generate_input_tensor(self, line) -> ReaderInputTensors:
+        dataset = dataset.batch(config.config.BATCH_SIZE)
+        return dataset
+
+    @tf.function
+    def _generate_input_tensors(self, *line):
         """Parses line to ReaderInputTensors"""
-        target = tf.constant(line[0], dtype=tf.string)
+        target = line[0]
         target_index = self.vocabs.target_vocab.get_word_to_index_lookup_table().lookup(
             target)
 
@@ -62,17 +76,11 @@ class PathContextReader:
 
         path_sources_lookup = self.vocabs.token_vocab.get_lookup_index(
             path_sources)
-        paths_lookup = self.vocabs.token_vocab.get_lookup_index(
-            path_sources)
+        paths_lookup = self.vocabs.path_vocab.get_lookup_index(
+            paths)
         path_targets_lookup = self.vocabs.token_vocab.get_lookup_index(
             path_targets)
-        return ReaderInputTensors(
-            target_string=target,
-            target_index=target_index,
-            path_source_token_strings=path_sources,
-            path_strings=paths,
-            path_target_token_strings=path_targets,
-            path_source_token_indices=path_sources_lookup,
-            path_indices=paths_lookup,
-            path_target_token_indices=path_targets_lookup,
-        )
+
+        return target_index, path_sources_lookup, \
+               paths_lookup, path_targets_lookup
+        # path_sources, paths, path_targets # Leave it here for possible future improvements

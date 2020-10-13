@@ -14,7 +14,8 @@ class Vocab:
                  special_words: Optional[Namespace] = Namespace()):
         """words - """
         self.word_to_index = {word: i for i, word in
-                              enumerate([*special_words.__dict__.items(), *words])}
+                              enumerate(
+                                  [*special_words.__dict__.items(), *words])}
         self.index_to_word = {i: word for word, i in self.word_to_index.items()}
         self.number_of_special = len(special_words.__dict__)
         self.lookup_table_word_to_index = None
@@ -22,7 +23,8 @@ class Vocab:
 
     @classmethod
     def create_from_freq_dict(cls, freq_dict: Dict[str, int]):
-        sorted_by_occurrences = sorted(freq_dict, key=lambda word: freq_dict[word])
+        sorted_by_occurrences = sorted(freq_dict,
+                                       key=lambda word: freq_dict[word])
         if len(
                 sorted_by_occurrences) > config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT:
             sorted_by_occurrences = sorted_by_occurrences[
@@ -83,6 +85,18 @@ class Vocab:
                                                 value_dtype=tf.string),
             default_value=tf.constant(default_value, tf.string))
 
+    def create_word_lookup(self):
+        if self.lookup_table_word_to_index is None:
+            self.lookup_table_word_to_index = self.create_word_to_index_lookup_table(
+                self.word_to_index,
+                config.config.DEFAULT_INT32_LOOKUP_VALUE)
+
+    def create_index_lookup(self):
+        if self.lookup_table_index_to_word is None:
+            self.lookup_table_index_to_word = self.create_index_to_word_lookup_table(
+                self.index_to_word,
+                config.config.DEFAULT_STRING_LOOKUP_VALUE)
+
     def get_word_to_index_lookup_table(self) -> tf.lookup.StaticHashTable:
         if self.lookup_table_word_to_index is None:
             self.lookup_table_word_to_index = self.create_word_to_index_lookup_table(
@@ -99,6 +113,7 @@ class Vocab:
 
     def get_lookup_index(self, word):
         return self.get_word_to_index_lookup_table().lookup(word)
+
 
 WordFreqDictType = Dict[str, int]
 
@@ -125,13 +140,15 @@ class Code2VecVocabs:
         print("Creating vocab from", config.config.TRAINING_FREQ_DICTS_PATH)
         freq_dicts = self._load_freq_dicts()
         print("Creating token vocab")
-        self.token_vocab = Vocab.create_from_freq_dict(freq_dicts.token_freq_dict)
+        self.token_vocab = Vocab.create_from_freq_dict(
+            freq_dicts.token_freq_dict)
         print("Created token vocab")
         print("Creating path vocab")
         self.path_vocab = Vocab.create_from_freq_dict(freq_dicts.path_freq_dict)
         print("Created path vocab")
         print("Creating target vocab")
-        self.target_vocab = Vocab.create_from_freq_dict(freq_dicts.target_freq_dict)
+        self.target_vocab = Vocab.create_from_freq_dict(
+            freq_dicts.target_freq_dict)
         print("Created target vocab")
         print("Created all vocabs")
 
