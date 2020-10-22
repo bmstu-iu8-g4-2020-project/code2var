@@ -43,14 +43,16 @@ public class ExtractFeaturesTask implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
-        //System.err.println("Extracting file: " + filePath);
+        System.err.println("Extracting file: " + filePath);
         processFile();
-        //System.err.println("Done with file: " + filePath);
+        System.err.println("Done with file: " + filePath);
         return null;
     }
 
     public void obfuscateCode() {
         try {
+            System.err.println("Obfuscating file:          " + filePath);
+
             Collection<CtType<?>> allTypes = returnAllTypes(code);
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -63,11 +65,17 @@ public class ExtractFeaturesTask implements Callable<Void> {
                         stringBuilder.append(obfuscated).append("\n\n");
                     }
                 } catch (ClassCastException e) {
+                        System.err.println("Obfuscating failed for file" + filePath);
+
 //                System.out.println("Сouldn't cast to class, might be interface");
                 }
             }
             code = stringBuilder.append("\n\n").toString();
+            System.err.println("Done obfuscation for file: " + filePath);
+
         } catch (Exception e) {
+              System.err.println("Obfuscating failed for: " + filePath);
+
 //            System.out.println("Ignored: " + e.getMessage());
         }
 
