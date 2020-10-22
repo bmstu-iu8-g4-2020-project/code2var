@@ -20,7 +20,7 @@ MAX_CONTEXTS=300
 WORD_VOCABULARY_SIZE=1301136 # As in original c2v. I don't know why this value
 PATH_VOCABULARY_SIZE=911417
 TARGET_VOCABULARY_SIZE=261245
-THREADS=64
+THREADS=8
 MAX_PATH_LENGTH=8
 MAX_PATH_WIDTH=2
 OBFUSCATING=true
@@ -55,33 +55,33 @@ echo "Obfuscating flag set " ${OBFUSCATING}
 # Extract AST path for code2vec
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING} > ${TRAIN_PATH_VEC}
+  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${TRAIN_PATH_VEC}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING} > ${TEST_PATH_VEC}
+  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${TEST_PATH_VEC}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING} > ${VALIDATION_PATH_VEC}
+  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${VALIDATION_PATH_VEC}"
 
 # Extract AST path for code2var
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING}> ${TRAIN_PATH_VAR}
+  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}> ${TEST_PATH_VAR}
+  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${TEST_PATH_VAR}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}> ${VALIDATION_PATH_VAR}
+  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}
 echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 

@@ -39,29 +39,33 @@ def ExtractFeaturesForDir(args, dir, prefix):
   outputFileName = TMP_DIR + prefix + dir.split("/")[-1]
   failed = False
   with open(outputFileName, "a") as outputFile:
-    sleeper = subprocess.Popen(command, stdout=outputFile,
-                               stderr=subprocess.PIPE)
-    timer = Timer(600000, kill, [sleeper])
-
-    try:
-      timer.start()
-      stdout, stderr = sleeper.communicate()
-    finally:
-      timer.cancel()
-
-    if sleeper.poll() == 0:
-      if len(stderr) > 0:
-        print(sys.stderr, stderr, file=sys.stdout)
-    else:
-      print(sys.stderr, "dir: " + str(dir) + " was not completed in time",
-            file=sys.stdout)
-      failed = True
-      subdirs = get_immediate_subdirectories(dir)
-      for subdir in subdirs:
-        ExtractFeaturesForDir(args, subdir, prefix + dir.split("/")[-1] + "_")
-  if failed:
-    if os.path.exists(outputFileName):
-      os.remove(outputFileName)
+    with open(prefix+dir+".data.log", 'a') as o:
+      print(command)
+      subprocess.call(command, stdout=o)
+      print("Ended: ", command)
+    # sleeper = subprocess.Popen(command, stdout=outputFile,
+    #                            stderr=subprocess.PIPE)
+    # timer = Timer(600000, kill, [sleeper])
+    #
+  #   try:
+  #     timer.start()
+  #     stdout, stderr = sleeper.communicate()
+  #   finally:
+  #     timer.cancel()
+  #
+  #   if sleeper.poll() == 0:
+  #     if len(stderr) > 0:
+  #       print(sys.stderr, stderr, file=sys.stdout)
+  #   else:
+  #     print(sys.stderr, "dir: " + str(dir) + " was not completed in time",
+  #           file=sys.stdout)
+  #     failed = True
+  #     subdirs = get_immediate_subdirectories(dir)
+  #     for subdir in subdirs:
+  #       ExtractFeaturesForDir(args, subdir, prefix + dir.split("/")[-1] + "_")
+  # if failed:
+  #   if os.path.exists(outputFileName):
+  #     os.remove(outputFileName)
 
 
 def ExtractFeaturesForDirsList(args, dirs):
@@ -89,7 +93,7 @@ if __name__ == "__main__":
   parser.add_argument("-maxwidth", "--max_path_width", dest="max_path_width",
                       required=False, default=2)
   parser.add_argument("-threads", "--num_threads", dest="num_threads",
-                      required=False, default=64)
+                      required=False, default=8)
   parser.add_argument("-j", "--jar", dest="jar", required=True)
   parser.add_argument("-d", "--dir", dest="dir", required=False)
   parser.add_argument("-file", "--file", dest="file", required=False)
