@@ -6,15 +6,16 @@ import config
 
 from typing import List, Optional, Dict, BinaryIO, NamedTuple, Set
 
+basic_special_words = Namespace(NOTHING='NOTHING')
 
 class Vocab:
     """Implements vocabulary for code2vec model"""
 
     def __init__(self, words: List[str],
-                 special_words: Optional[Namespace] = Namespace()):
+                 special_words: Optional[Namespace] = basic_special_words):
         """words - """
         self.word_to_index = {word: i for i, word in
-                              enumerate([*special_words.__dict__.items(), *words])}
+                              enumerate([*special_words.__dict__.values(), *words])}
         self.index_to_word = {i: word for word, i in self.word_to_index.items()}
         self.number_of_special = len(special_words.__dict__)
         self.lookup_table_word_to_index = None
@@ -33,7 +34,7 @@ class Vocab:
 
     @classmethod
     def load_from_file(cls, file: BinaryIO,
-                       special_words: Optional[Namespace] = Namespace()):
+                       special_words: Optional[Namespace] = basic_special_words):
         print("Loading from file...")
         w_t_i = pickle.load(file)
         i_t_w = pickle.load(file)

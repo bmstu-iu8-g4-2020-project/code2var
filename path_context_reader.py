@@ -81,6 +81,9 @@ class PathContextReader:
         path_targets_lookup = self.vocabs.token_vocab.get_lookup_index(
             path_targets)
 
-        return target_index, path_sources_lookup, \
-               paths_lookup, path_targets_lookup
-        # path_sources, paths, path_targets # Leave it here for possible future improvements
+        return ReaderInputTensors(target_index=target_index,
+                                  path_source_token_indices=path_sources_lookup,
+                                  path_indices=paths_lookup,
+                                  path_target_token_indices=path_targets_lookup,
+                                  path_source_token_strings=path_sources,
+                                  path_strings=paths, path_target_token_strings=path_targets)
