@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import org.kohsuke.args4j.CmdLineException;
@@ -60,7 +61,7 @@ public class App {
 				tasks.forEach(ExtractFeaturesTask::obfuscateCode);
 
 			}
-			executor.invokeAll(tasks);
+			executor.invokeAll(tasks, 3, TimeUnit.MINUTES);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} finally {
