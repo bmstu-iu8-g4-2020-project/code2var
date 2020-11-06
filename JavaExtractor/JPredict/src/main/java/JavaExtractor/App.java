@@ -62,6 +62,7 @@ public class App {
 
 			}
 			executor.invokeAll(tasks, 3, TimeUnit.MINUTES);
+			
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} finally {
