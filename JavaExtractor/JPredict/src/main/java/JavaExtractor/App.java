@@ -3,10 +3,11 @@ package JavaExtractor;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.List;
+import java.util.concurrent.*;
 
 import org.kohsuke.args4j.CmdLineException;
 
@@ -56,15 +57,23 @@ public class App {
 			return;
 		}
 		try {
-			if (s_CommandLineValues.Obfuscate){
-//				System.out.println("Hi!");
-				tasks.forEach(ExtractFeaturesTask::obfuscateCode);
-
+			List<Future<Void>> future = new ArrayList<>();
+			tasks.forEach((task) -> {
+				future.add(executor.submit(task));
+			});
+			for (Future<Void> f : future) {
+				if (!f.isDone()) {
+					try {
+						f.get(s_CommandLineValues.Timeout, TimeUnit.MINUTES);
+					} catch (Exception e) {
+						System.err.println("ATTENTION! "+ f);
+						f.cancel(true);
+						e.printStackTrace();
+						System.out.println(new Date());
+					}
+				}
 			}
-			executor.invokeAll(tasks, 3, TimeUnit.MINUTES);
-			
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+
 		} finally {
 			executor.shutdown();
 		}
