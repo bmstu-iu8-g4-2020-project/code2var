@@ -1,9 +1,9 @@
 from typing import NamedTuple, Optional
 
+import tensorflow as tf
+
 import config
 from vocabulary import Code2VecVocabs
-
-import tensorflow as tf
 
 
 class ReaderInputTensors(NamedTuple):
@@ -48,7 +48,8 @@ class PathContextReader:
         dataset = tf.data.experimental.CsvDataset(self.csv_path, [""] * (
                 config.config.MAX_CONTEXTS + 1), field_delim=" ",
                                                   use_quote_delim=False)
-
+        dataset = dataset.filter(lambda name, *_: self.vocabs.target_vocab.get_lookup_index(
+            name) != 0)  # Drop functions not in target vocab
         if self.repeat:
             dataset = dataset.repeat()
         if self.is_train:
@@ -57,6 +58,8 @@ class PathContextReader:
             dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
                                       reshuffle_each_iteration=True)
         dataset = dataset.map(self._generate_input_tensors)
+        dataset = dataset.map(lambda x: (
+            (x.path_source_token_indices, x.path_indices, x.path_target_token_indices), x.target_index))
 
         dataset = dataset.batch(config.config.BATCH_SIZE)
         return dataset
