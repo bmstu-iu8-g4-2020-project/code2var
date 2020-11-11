@@ -79,7 +79,7 @@ class code2vec(tf.keras.Model):
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
             self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'],
-                               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+                               loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
     def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
         if self.model is None:

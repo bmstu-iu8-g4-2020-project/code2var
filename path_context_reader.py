@@ -48,8 +48,8 @@ class PathContextReader:
         dataset = tf.data.experimental.CsvDataset(self.csv_path, [""] * (
                 config.config.MAX_CONTEXTS + 1), field_delim=" ",
                                                   use_quote_delim=False)
-        dataset = dataset.filter(lambda name, *_: self.vocabs.target_vocab.get_lookup_index(
-            name) != 0)  # Drop functions not in target vocab
+        # dataset = dataset.filter(lambda name, *_: self.vocabs.target_vocab.get_lookup_index(
+        #     name) != 0)  # Drop functions not in target vocab
         if self.repeat:
             dataset = dataset.repeat()
         if self.is_train:
