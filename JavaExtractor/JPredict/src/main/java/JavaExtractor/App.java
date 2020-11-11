@@ -13,6 +13,8 @@ import org.kohsuke.args4j.CmdLineException;
 
 import JavaExtractor.Common.CommandLineValues;
 import JavaExtractor.FeaturesEntities.ProgramRelation;
+import JavaExtractor.Common.Pair;
+
 
 public class App {
 	private static CommandLineValues s_CommandLineValues;
@@ -57,19 +59,18 @@ public class App {
 			return;
 		}
 		try {
-			List<Future<Void>> future = new ArrayList<>();
+			List<Pair<Future<Void>, String>> future = new ArrayList<>();
 			tasks.forEach((task) -> {
-				future.add(executor.submit(task));
+				future.add(Pair.makePair(executor.submit(task), task.filename()));
 			});
-			for (Future<Void> f : future) {
-				if (!f.isDone()) {
+			for (Pair<Future<Void>, String> f : future) {
+				if (!f.first().isDone()) {
 					try {
-						f.get(s_CommandLineValues.Timeout, TimeUnit.MINUTES);
+						f.first().get(s_CommandLineValues.Timeout, TimeUnit.MINUTES);
 					} catch (Exception e) {
-						System.err.println("ATTENTION! "+ f);
-						f.cancel(true);
+						System.err.println("ATTENTION! "+ f.second());
+						f.first().cancel(true);
 						e.printStackTrace();
-						System.out.println(new Date());
 					}
 				}
 			}

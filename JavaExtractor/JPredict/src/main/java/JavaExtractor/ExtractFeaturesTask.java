@@ -187,4 +187,9 @@ public class ExtractFeaturesTask implements Callable<Void> {
         }
         return StringUtils.join(methodsOutputs, "\n");
     }
+
+    public String filename(){
+        return filePath.toString();
+    }
+
 }
