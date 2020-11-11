@@ -12,7 +12,6 @@ class Vocab:
 
     def __init__(self, words: List[str],
                  special_words: Optional[Namespace] = Namespace()):
-        """words - """
         self.word_to_index = {word: i for i, word in
                               enumerate([*special_words.__dict__.items(), *words])}
         self.index_to_word = {i: word for word, i in self.word_to_index.items()}

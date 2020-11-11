@@ -55,33 +55,52 @@ echo "Obfuscating flag set " ${OBFUSCATING}
 # Extract AST path for code2vec
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING}
+  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}vec_processing.log
+
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TRAIN_PATH_VEC}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING}
+  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${TEST_FILES_DIR}vec_processing.log
+
+find ${TEST_FILES_DIR} -name '*.data.log' -exec cat {} > ${TEST_PATH_VEC} \;
+find ${TEST_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TEST_PATH_VEC}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING}
+  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${VALIDATION_FILES_DIR}vec_processing.log
+
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec cat {} > ${VALIDATION_PATH_VEC} \;
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${VALIDATION_PATH_VEC}"
 
 # Extract AST path for code2var
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING}
+  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}var_processing.log
+
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}
+  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${TEST_FILES_DIR}var_processing.log
+
+find ${TEST_FILES_DIR} -name '*.data.log' -exec cat {} > ${TEST_PATH_VAR} \;
+find ${TEST_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TEST_PATH_VAR}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}
+  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${VALIDATION_FILES_DIR}var_processing.log
+
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec cat {} > ${VALIDATION_PATH_VAR} \;
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
+
 echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 
