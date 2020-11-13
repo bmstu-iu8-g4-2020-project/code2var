@@ -34,7 +34,7 @@ class code2vec(tf.keras.Model):
         self.embed_dim: int = embed_dim
         self.dropout_rate: float = 1 - dropout_keep_rate
         self.code_embed_dim: int = 3 * self.embed_dim  # 2*leaves_embed_dim + path_embed_dim
-
+        self.history = None
         self.model = None  # TODO (RKulagin): look at tf github and check, how they store models
 
     def build_model(self, **kwargs):
@@ -80,13 +80,21 @@ class code2vec(tf.keras.Model):
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
             self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'],
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
+            print(self.model.summary())
 
     def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
         if self.model is None:
             self.build_model()
         if tf_config.list_logical_devices('GPU'):
             with tf.device("/device:GPU:0"):
-                self.model.fit(dataset, epochs=epochs, callbacks=callbacks)
+                self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks)
+
+    def load_weights(self,
+                     filepath,
+                     by_name=False,
+                     skip_mismatch=False,
+                     options=None):
+        self.model.load_weights(filepath, by_name, skip_mismatch, options)
 
 
 if __name__ == "__main__":
@@ -110,11 +118,16 @@ if __name__ == "__main__":
     model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
                      path_vocab_size=PATH_VOCAB_SIZE)
 
-    checkpoint_path = "training_2/cp-{epoch:04d}.ckpt"
+    checkpoint_path = "training_2/cp-{epoch:04d}.hdf5"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                      save_weights_only=True,
                                                      verbose=1)
-
-    model.train(dataset, 100, [cp_callback])
+    model.train(dataset, 4, [cp_callback])
+    print(model.history())
+    # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
+    #                   path_vocab_size=PATH_VOCAB_SIZE)
+    #
+    # # model2.build_model()
+    # model2.load_weights('training_2/cp-0020.hdf5')
