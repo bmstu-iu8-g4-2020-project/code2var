@@ -134,7 +134,7 @@ if __name__ == "__main__":
                                                      monitor='val_loss',
                                                      verbose=1)
     model.evaluate(dataset)
-    model.train(dataset, 4, [cp_callback])
+    model.train(dataset, 100, [cp_callback])
     print(model.history.history)
     json.dump(model.history.history, open("code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
