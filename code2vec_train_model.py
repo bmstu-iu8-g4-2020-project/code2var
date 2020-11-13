@@ -9,6 +9,7 @@ import config
 from path_context_reader import PathContextReader
 from vocabulary import Code2VecVocabs
 
+import json
 
 class GPUEmbedding(tf.keras.layers.Embedding):
     @tf_utils.shape_type_conversion
@@ -96,6 +97,12 @@ class code2vec(tf.keras.Model):
                      options=None):
         self.model.load_weights(filepath, by_name, skip_mismatch, options)
 
+    def evaluate(self,
+                 *args, **kwargs):
+        if self.model is None:
+            self.build_model()
+        self.model.evaluate(*args, **kwargs)
+
 
 if __name__ == "__main__":
     # tf.debugging.set_log_device_placement(True)
@@ -114,7 +121,7 @@ if __name__ == "__main__":
     TOKEN_VOCAB_SIZE = c2v_vocabs.token_vocab.lookup_table_word_to_index.size().numpy()
     TARGET_VOCAB_SIZE = c2v_vocabs.target_vocab.lookup_table_word_to_index.size().numpy()
     PATH_VOCAB_SIZE = c2v_vocabs.path_vocab.lookup_table_word_to_index.size().numpy()
-
+    tf.random.set_seed(42)
     model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
                      path_vocab_size=PATH_VOCAB_SIZE)
 
@@ -123,9 +130,13 @@ if __name__ == "__main__":
 
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                      save_weights_only=True,
+                                                     save_best_only=True,
+                                                     monitor='val_loss',
                                                      verbose=1)
+    model.evaluate(dataset)
     model.train(dataset, 4, [cp_callback])
-    print(model.history())
+    print(model.history.history)
+    json.dump(model.history.history, open("code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
     #                   path_vocab_size=PATH_VOCAB_SIZE)
     #
