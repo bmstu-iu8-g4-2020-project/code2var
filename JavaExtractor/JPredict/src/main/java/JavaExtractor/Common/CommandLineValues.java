@@ -46,7 +46,7 @@ public class CommandLineValues {
 	public boolean Obfuscate = false;
 
 	@Option(name = "--timeout", required = false)
-	public int Timeout = 2;
+	public int Timeout = 1;
 
 
 	public CommandLineValues(String... args) throws CmdLineException {

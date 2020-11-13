@@ -16,7 +16,6 @@ import JavaExtractor.Common.CommandLineValues;
 import JavaExtractor.FeaturesEntities.ProgramRelation;
 import JavaExtractor.Common.Pair;
 
-
 public class App {
     private static CommandLineValues s_CommandLineValues;
 
@@ -44,6 +43,7 @@ public class App {
 
     private static void extractDir() {
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(s_CommandLineValues.NumThreads);
+        executor.setMaximumPoolSize(s_CommandLineValues.NumThreads + 2);
         LinkedList<ExtractFeaturesTask> tasks = new LinkedList<>();
         try {
             Files.walk(Paths.get(s_CommandLineValues.Dir)).filter(Files::isRegularFile)
@@ -57,7 +57,10 @@ public class App {
         }
         try {
             for (ExtractFeaturesTask task : tasks) {
-                executor.execute(new TimeoutCaller(task, s_CommandLineValues.Timeout * 60, task.filename()));
+                while (executor.getTaskCount() - executor.getCompletedTaskCount() > 8) {
+                } // prevent from creating a lot of threads in memory.
+                System.err.println(executor.getActiveCount() + " Total:" + executor.getTaskCount() + " Compl." + executor.getCompletedTaskCount() + " IN QUEUE:" + (executor.getTaskCount() - executor.getCompletedTaskCount()));
+                executor.execute(new TimeoutCaller(task, s_CommandLineValues.Timeout * 10, task.filename()));
             }
         } finally {
             executor.shutdown();

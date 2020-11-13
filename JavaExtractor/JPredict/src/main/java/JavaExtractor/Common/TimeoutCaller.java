@@ -1,5 +1,6 @@
 package JavaExtractor.Common;
 
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -18,18 +19,24 @@ public class TimeoutCaller implements Runnable {
 
     @Override
     public void run() {
-        System.err.println("Invoked timer for " + func_name + " " + "thread:" + Thread.currentThread().getId());
+        System.err.println("Invoked timer for " + func_name + " " + "thread:" + Thread.currentThread().getId() + " at " + new Date());
         new Timer(true).schedule(new TimerTask() {
             @Override
             public void run() {
                 if (thread.isAlive()) {
-                    thread.interrupt();
-                    System.err.println("ATTENTION! Exceeded timer for " + func_name + " " + "thread:" + Thread.currentThread().getId());
+                    thread.stop();
+                    System.err.println("ATTENTION! Exceeded timer for " + func_name + " " + "thread:" + Thread.currentThread().getId() + " at " + new Date());
                 }
             }
-        }, timeout * 1000);
-        thread.start();
-        System.err.println("Closed timer for " + func_name + " " + "thread:" + Thread.currentThread().getId());
+        }, timeout);
+        try {
+            thread.start();
+            thread.join();
+            System.err.println("Closed timer for " + func_name + " " + "thread:" + Thread.currentThread().getId() + " at " + new Date());
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
 
