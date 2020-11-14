@@ -106,7 +106,7 @@ echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 # Generate vocabularies for train code2vec
 
-echo "Generating vocabularies from ${TRAIN_PATH_VEC}"
+echo "Generating target histogram from ${TRAIN_PATH_VEC}"
 cut -d ' ' -f1 < ${TRAIN_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY}
 cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | \
 awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${LEAVES_VOCABULARY}
