@@ -11,6 +11,7 @@ from vocabulary import Code2VecVocabs
 
 import json
 
+
 class GPUEmbedding(tf.keras.layers.Embedding):
     @tf_utils.shape_type_conversion
     def build(self, input_shape):
@@ -83,13 +84,12 @@ class code2vec(tf.keras.Model):
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
             print(self.model.summary())
 
-
     def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
         if self.model is None:
             self.build_model()
         if tf_config.list_logical_devices('GPU'):
             with tf.device("/device:GPU:0"):
-                self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks,  **kwargs)
+                self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks, **kwargs)
 
     def load_weights(self,
                      filepath,
@@ -140,6 +140,7 @@ if __name__ == "__main__":
     val_dataset = val_pcr.get_dataset()
 
     model.evaluate(dataset)
+    model.evaluate(val_dataset)
     model.train(dataset, 100, [cp_callback], validation_data=val_dataset)
     print(model.history.history)
     json.dump(model.history.history, open("code2vec_history.json", "w"))

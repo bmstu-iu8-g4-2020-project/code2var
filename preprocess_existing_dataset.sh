@@ -41,10 +41,6 @@ PATH_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.path.vocab
 
 echo "Generating vocabularies from ${TRAIN_PATH_VEC}"
 cut -d ' ' -f1 < ${TRAIN_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY}
-cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | \
-awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${LEAVES_VOCABULARY}
-cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f2 | \
-awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${PATH_VOCABULARY}
 
 # Preprocess for code2vec
 
@@ -57,5 +53,3 @@ ${PYTHON} preprocess.py --train_data_vec ${TRAIN_PATH_VEC} --test_data_vec ${TES
   --target_vocab_size ${TARGET_VOCABULARY_SIZE} --target_histogram ${FUNCTIONS_VOCABULARY} \
   --word_histogram ${LEAVES_VOCABULARY} --path_histogram ${PATH_VOCABULARY} \
   --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2vec
-
-# Preprocess for code2var
