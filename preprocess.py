@@ -55,7 +55,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq, data_role)
                 contexts = line.rstrip('\n').split(" ")
                 assert len(contexts) > 0
                 target, contexts = contexts[0], contexts[1:]
-                if target in target_freq and data_role == "train_vec":
+                if target in target_freq or data_role != "train_vec":
                     if len(contexts) > max_contexts:
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))
