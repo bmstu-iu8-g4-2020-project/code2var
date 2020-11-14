@@ -83,12 +83,13 @@ class code2vec(tf.keras.Model):
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
             print(self.model.summary())
 
+
     def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
         if self.model is None:
             self.build_model()
         if tf_config.list_logical_devices('GPU'):
             with tf.device("/device:GPU:0"):
-                self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks)
+                self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks,  **kwargs)
 
     def load_weights(self,
                      filepath,
@@ -131,10 +132,15 @@ if __name__ == "__main__":
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                      save_weights_only=True,
                                                      save_best_only=True,
-                                                     monitor='val_loss',
+                                                     monitor='val_accuracy',
                                                      verbose=1)
+
+    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small/java-small.c2v.dict"
+    val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs, csv_path="dataset/java-small/java-small.val_vec.csv")
+    val_dataset = val_pcr.get_dataset()
+
     model.evaluate(dataset)
-    model.train(dataset, 100, [cp_callback])
+    model.train(dataset, 100, [cp_callback], validation_data=val_dataset)
     print(model.history.history)
     json.dump(model.history.history, open("code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
