@@ -132,8 +132,15 @@ if __name__ == "__main__":
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                      save_weights_only=True,
                                                      save_best_only=True,
-                                                     monitor='val_accuracy',
+                                                     monitor='accuracy',
                                                      verbose=1)
+
+    callbacks = [cp_callback, tf.keras.callbacks.TensorBoard(log_dir='./logs'),
+                 tf.keras.callbacks.EarlyStopping(
+                     monitor="loss",
+                     min_delta=0.01,
+                     mode="auto",
+                 )]
 
     config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small/java-small.c2v.dict"
     val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs, csv_path="dataset/java-small/java-small.val_vec.csv")
@@ -141,7 +148,7 @@ if __name__ == "__main__":
 
     model.evaluate(dataset)
     model.evaluate(val_dataset)
-    model.train(dataset, 100, [cp_callback], validation_data=val_dataset)
+    model.train(dataset, 100, callbacks, validation_data=val_dataset)
     print(model.history.history)
     json.dump(model.history.history, open("code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
