@@ -38,6 +38,7 @@ class code2vec(tf.keras.Model):
         self.code_embed_dim: int = 3 * self.embed_dim  # 2*leaves_embed_dim + path_embed_dim
         self.history = None
         self.model = None  # TODO (RKulagin): look at tf github and check, how they store models
+        self.vector_model = None
 
     def build_model(self, **kwargs):
         if self.model is None:
@@ -80,9 +81,14 @@ class code2vec(tf.keras.Model):
 
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
+            self.vector_model = tf.keras.Model(inputs=inputs, outputs=code_vectors)
             self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'],
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
+            # self.vector_model.compile()
             print(self.model.summary())
+
+    def get_vector(self, inputs):
+        return self.vector_model(inputs)
 
     def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
         if self.model is None:
@@ -142,17 +148,31 @@ if __name__ == "__main__":
                      mode="auto",
                  )]
 
-    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small/java-small.c2v.dict"
-    val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs, csv_path="dataset/java-small/java-small.val_vec.csv")
+    # config.config.TRAINING_FREQ_DICTS_PATH = "dataset-1/java-small/java-small.c2v.dict"
+    val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
+                                csv_path="dataset/java-small/java-small.test_vec.csv")
     val_dataset = val_pcr.get_dataset()
-
+    #
     model.evaluate(dataset)
     model.evaluate(val_dataset)
     model.train(dataset, 100, callbacks, validation_data=val_dataset)
-    print(model.history.history)
-    json.dump(model.history.history, open("code2vec_history.json", "w"))
+    # print(model.history.history)
+    # json.dump(model.history.history, open("code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
     #                   path_vocab_size=PATH_VOCAB_SIZE)
     #
-    # # model2.build_model()
-    # model2.load_weights('training_2/cp-0020.hdf5')
+    # model2.build_model()
+    # model2.load_weights('training_2/cp-0035.hdf5')
+    # it = iter(val_dataset)
+    # for line in it:
+    #     print(line)
+    #     vectors = model2.get_vector(line)
+    # import numpy as np
+    #
+    # res_arr =[[0 for j in range(6)] for i in range(6)]
+    # for i in range(len(vectors)):
+    #     for j in range(len(vectors)):
+    #         res_arr[i][j] = np.dot(vectors[i], vectors[j]) / np.sqrt(
+    #             np.dot(vectors[i], vectors[i]) * np.dot(vectors[j], vectors[j]))
+    #
+    # print(np.array(res_arr))
