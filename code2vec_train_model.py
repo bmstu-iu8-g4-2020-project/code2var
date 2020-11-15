@@ -1,18 +1,17 @@
 import os
-from typing import List
-
+import config
 import tensorflow as tf
+
 from tensorflow.python.framework import config as tf_config
 from tensorflow.python.keras.utils import tf_utils
-
-import config
+from typing import List
 from path_context_reader import PathContextReader
 from vocabulary import Code2VecVocabs
 
-import json
-
 
 class GPUEmbedding(tf.keras.layers.Embedding):
+    """Fixes problem with tf.keras.layers.Embedding. Original one does not want to work with GPU in Eager Mode."""
+
     @tf_utils.shape_type_conversion
     def build(self, input_shape):
         self.embeddings = self.add_weight(
@@ -21,13 +20,19 @@ class GPUEmbedding(tf.keras.layers.Embedding):
             name="embeddings",
             regularizer=self.embeddings_regularizer,
             constraint=self.embeddings_constraint,
+            trainable=True
         )
         self.built = True
 
 
 class code2vec(tf.keras.Model):
-    def __init__(self, token_vocab_size, target_vocab_size, path_vocab_size, max_contexts=config.config.MAX_CONTEXTS,
-                 embed_dim=config.config.EMBED_DIMENSION, dropout_keep_rate=config.config.DROPOUT_KEEP_RATE):
+    def __init__(self,
+                 token_vocab_size,
+                 target_vocab_size,
+                 path_vocab_size,
+                 max_contexts=config.config.MAX_CONTEXTS,
+                 embed_dim=config.config.EMBED_DIMENSION,
+                 dropout_keep_rate=config.config.DROPOUT_KEEP_RATE):
         super(code2vec, self).__init__()
         self.max_contexts: int = max_contexts
         self.token_vocab_size: int = token_vocab_size
@@ -61,8 +66,8 @@ class code2vec(tf.keras.Model):
             concatenated_embeds = tf.keras.layers.Concatenate(name="concatenated_embeds")(
                 [token_source_embed_model.output, path_embed_model.output, token_target_embed_model.output])
 
-            droped_embeds = tf.keras.layers.Dropout(self.dropout_rate)(concatenated_embeds)
-            flatten_embeds = tf.keras.layers.Reshape((-1, self.code_embed_dim), name="flatten_embeds")(droped_embeds)
+            dropped_embeds = tf.keras.layers.Dropout(self.dropout_rate)(concatenated_embeds)
+            flatten_embeds = tf.keras.layers.Reshape((-1, self.code_embed_dim), name="flatten_embeds")(dropped_embeds)
             combined_context_vector = tf.keras.layers.Dense(self.code_embed_dim, activation='sigmoid',
                                                             name="combined_context_vector")(flatten_embeds)
             context_weights = tf.keras.layers.Dense(1, activation='softmax', name="context_weights")(
@@ -90,19 +95,19 @@ class code2vec(tf.keras.Model):
     def get_vector(self, inputs):
         return self.vector_model(inputs)
 
-    def train(self, dataset, epochs, callbacks: List[tf.keras.callbacks.ModelCheckpoint], **kwargs):
+    def train(self,
+              dataset,
+              epochs,
+              callbacks: List[tf.keras.callbacks.Callback],
+              **kwargs):
         if self.model is None:
             self.build_model()
         if tf_config.list_logical_devices('GPU'):
             with tf.device("/device:GPU:0"):
                 self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks, **kwargs)
 
-    def load_weights(self,
-                     filepath,
-                     by_name=False,
-                     skip_mismatch=False,
-                     options=None):
-        self.model.load_weights(filepath, by_name, skip_mismatch, options)
+    def load_weights(self, *args, **kwargs):
+        self.model.load_weights(*args, **kwargs)
 
     def evaluate(self,
                  *args, **kwargs):
@@ -135,44 +140,21 @@ if __name__ == "__main__":
     checkpoint_path = "training_1/cp-{epoch:04d}.hdf5"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                     save_weights_only=True,
-                                                     save_best_only=True,
-                                                     monitor='accuracy',
-                                                     verbose=1)
+    callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                    save_weights_only=True,
+                                                    save_best_only=True,
+                                                    monitor='accuracy',
+                                                    verbose=1),
+                 tf.keras.callbacks.TensorBoard(log_dir='./logs'),
+                 tf.keras.callbacks.EarlyStopping(monitor="loss",
+                                                  min_delta=0.01,
+                                                  mode="auto",
+                                                  ),
+                 tf.keras.callbacks.CSVLogger('training.log')
+                 ]
 
-    callbacks = [cp_callback, tf.keras.callbacks.TensorBoard(log_dir='./logs'),
-                 tf.keras.callbacks.EarlyStopping(
-                     monitor="loss",
-                     min_delta=0.01,
-                     mode="auto",
-                 )]
-
-    # config.config.TRAINING_FREQ_DICTS_PATH = "dataset-1/java-small/java-small.c2v.dict"
     val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                csv_path="dataset/java-small/java-small.test_vec.csv")
+                                csv_path="dataset/java-small/java-small.test_vec.csv")  # Now it is normal that accuracy arround 0.
     val_dataset = val_pcr.get_dataset()
-    #
-    model.evaluate(dataset)
-    model.evaluate(val_dataset)
+
     model.train(dataset, 100, callbacks, validation_data=val_dataset)
-    print(model.history.histor1)
-    json.dump(model.history.history, open("training_1/code2vec_history.json", "w"))
-    # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
-    #                   path_vocab_size=PATH_VOCAB_SIZE)
-    #
-    # model2.build_model()
-    # model2.load_weights('training_2/cp-0035.hdf5')
-    # it = iter(val_dataset)
-    # for line in it:
-    #     print(line)
-    #     vectors = model2.get_vector(line)
-    # import numpy as np
-    #
-    # res_arr =[[0 for j in range(6)] for i in range(6)]
-    # for i in range(len(vectors)):
-    #     for j in range(len(vectors)):
-    #         res_arr[i][j] = np.dot(vectors[i], vectors[j]) / np.sqrt(
-    #             np.dot(vectors[i], vectors[i]) * np.dot(vectors[j], vectors[j]))
-    #
-    # print(np.array(res_arr))

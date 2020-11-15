@@ -1,4 +1,3 @@
-
 class config:
     BATCH_SIZE = 16
     READER_NUM_PARALLEL_BATCHES = 1
