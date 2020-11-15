@@ -2,8 +2,9 @@
 import os
 import pickle
 import random
-from argparse import ArgumentParser
 import config
+
+from argparse import ArgumentParser
 
 
 def parse_vocab(path, min_frequency=1):
