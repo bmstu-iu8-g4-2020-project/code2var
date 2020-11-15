@@ -2,6 +2,7 @@ import os
 import config
 import tensorflow as tf
 
+from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
 from tensorflow.python.keras.utils import tf_utils
 from typing import List
@@ -117,12 +118,24 @@ class code2vec(tf.keras.Model):
 
 
 if __name__ == "__main__":
-    # tf.debugging.set_log_device_placement(True)
+    parser = ArgumentParser()
+    parser.add_argument("--dataset",
+                        dest="dataset_name",
+                        help="dataset name",
+                        required=True)
+    parser.add_argument("--checkpoints_dir",
+                        dest="checkpoints_dir",
+                        help="Dir for checkpoints",
+                        required=False,
+                        default="training")
+    args = parser.parse_args()
+
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     config.config.CREATE_VOCAB = True
-    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small/java-small.c2v.dict"
+    config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.c2v.dict"
     c2v_vocabs = Code2VecVocabs()
-    pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs, csv_path="dataset/java-small/java-small.train_vec.csv")
+    pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
+                            csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.train_vec.csv")
     dataset = pcr.get_dataset()
     # init lookups
 
@@ -137,7 +150,7 @@ if __name__ == "__main__":
     model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
                      path_vocab_size=PATH_VOCAB_SIZE)
 
-    checkpoint_path = "training_1/cp-{epoch:04d}.hdf5"
+    checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}.hdf5"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
     callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -154,7 +167,7 @@ if __name__ == "__main__":
                  ]
 
     val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                csv_path="dataset/java-small/java-small.test_vec.csv")  # Now it is normal that accuracy arround 0.
+                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.test_vec.csv")  # Now it is normal that accuracy arround 0.
     val_dataset = val_pcr.get_dataset()
 
     model.train(dataset, 100, callbacks, validation_data=val_dataset)

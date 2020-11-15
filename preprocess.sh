@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Copyright 2020 RKulagin
 set -e
 
 DATASET_NAME=java-small
