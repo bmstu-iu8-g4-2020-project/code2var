@@ -132,7 +132,7 @@ if __name__ == "__main__":
     model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
                      path_vocab_size=PATH_VOCAB_SIZE)
 
-    checkpoint_path = "training_2/cp-{epoch:04d}.hdf5"
+    checkpoint_path = "training_1/cp-{epoch:04d}.hdf5"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     model.evaluate(dataset)
     model.evaluate(val_dataset)
     model.train(dataset, 100, callbacks, validation_data=val_dataset)
-    # print(model.history.history)
-    # json.dump(model.history.history, open("code2vec_history.json", "w"))
+    print(model.history.histor1)
+    json.dump(model.history.history, open("training_1/code2vec_history.json", "w"))
     # model2 = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
     #                   path_vocab_size=PATH_VOCAB_SIZE)
     #
