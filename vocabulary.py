@@ -1,39 +1,41 @@
 import pickle
 from argparse import Namespace
+from typing import List, Optional, Dict, BinaryIO, NamedTuple, Set
+
 import tensorflow as tf
 
 import config
 
-from typing import List, Optional, Dict, BinaryIO, NamedTuple, Set
+basic_special_words = Namespace(NOTHING='NOTHING')
 
 
 class Vocab:
     """Implements vocabulary for code2vec model"""
 
     def __init__(self, words: List[str],
-                 special_words: Optional[Namespace] = Namespace()):
+                 special_words: Optional[Namespace] = basic_special_words):
         """words - """
         self.word_to_index = {word: i for i, word in
-                              enumerate([*special_words.__dict__.items(), *words])}
+                              enumerate([*special_words.__dict__.values(), *words])}
         self.index_to_word = {i: word for word, i in self.word_to_index.items()}
         self.number_of_special = len(special_words.__dict__)
         self.lookup_table_word_to_index = None
         self.lookup_table_index_to_word = None
 
     @classmethod
-    def create_from_freq_dict(cls, freq_dict: Dict[str, int]):
+    def create_from_freq_dict(cls, freq_dict: Dict[str, int], limit: int):
         sorted_by_occurrences = sorted(freq_dict,
                                        key=lambda word: freq_dict[word])
-        if len(sorted_by_occurrences) > config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT:
+        if len(sorted_by_occurrences) > limit:
             sorted_by_occurrences = sorted_by_occurrences[
-                                    :config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT]
+                                    :limit]
         print("Creating vocab from frequency dictionary of",
               len(sorted_by_occurrences), "elements")
         return cls(words=sorted_by_occurrences)
 
     @classmethod
     def load_from_file(cls, file: BinaryIO,
-                       special_words: Optional[Namespace] = Namespace()):
+                       special_words: Optional[Namespace] = basic_special_words):
         print("Loading from file...")
         w_t_i = pickle.load(file)
         i_t_w = pickle.load(file)
@@ -139,14 +141,15 @@ class Code2VecVocabs:
         freq_dicts = self._load_freq_dicts()
         print("Creating token vocab")
         self.token_vocab = Vocab.create_from_freq_dict(
-            freq_dicts.token_freq_dict)
+            freq_dicts.token_freq_dict, config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT)
         print("Created token vocab")
         print("Creating path vocab")
-        self.path_vocab = Vocab.create_from_freq_dict(freq_dicts.path_freq_dict)
+        self.path_vocab = Vocab.create_from_freq_dict(freq_dicts.path_freq_dict,
+                                                      config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT)
         print("Created path vocab")
         print("Creating target vocab")
         self.target_vocab = Vocab.create_from_freq_dict(
-            freq_dicts.target_freq_dict)
+            freq_dicts.target_freq_dict, config.config.TARGET_VOCAB_SIZE)
         print("Created target vocab")
         print("Created all vocabs")
 
