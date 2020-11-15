@@ -15,7 +15,7 @@ def test_get_dataset():
     pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
                             csv_path="dataset/java-small/java-small.train_vec.csv")
     dataset = pcr.get_dataset()
-    for line in dataset:
-        assert line[0].shape[0] == line[1].shape[0]
-        assert line[1].shape == line[2].shape
-        assert line[2].shape == line[3].shape
+    it = iter(dataset)
+    it = it.get_next()
+    assert it.target_index.shape[0] == it.path_source_token_indices.shape[0]
+
