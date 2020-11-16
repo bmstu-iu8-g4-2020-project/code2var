@@ -43,35 +43,10 @@ def ExtractFeaturesForDir(args, dir, prefix):
             print(command)
             sp = subprocess.Popen(command, stdout=o, stderr=subprocess.PIPE)
 
-
         while sp.poll() is None:  # sp.poll() returns None while subprocess is running
             print(sp.stderr.readline())
 
         print("Ended: ", command)
-
-        # sleeper = subprocess.Popen(command, stdout=outputFile,
-        #                            stderr=subprocess.PIPE)
-        # timer = Timer(600000, kill, [sleeper])
-        #
-    #   try:
-    #     timer.start()
-    #     stdout, stderr = sleeper.communicate()
-    #   finally:
-    #     timer.cancel()
-    #
-    #   if sleeper.poll() == 0:
-    #     if len(stderr) > 0:
-    #       print(sys.stderr, stderr, file=sys.stdout)
-    #   else:
-    #     print(sys.stderr, "dir: " + str(dir) + " was not completed in time",
-    #           file=sys.stdout)
-    #     failed = True
-    #     subdirs = get_immediate_subdirectories(dir)
-    #     for subdir in subdirs:
-    #       ExtractFeaturesForDir(args, subdir, prefix + dir.split("/")[-1] + "_")
-    # if failed:
-    #   if os.path.exists(outputFileName):
-    #     os.remove(outputFileName)
 
 
 def ExtractFeaturesForDirsList(args, dirs):
@@ -83,8 +58,6 @@ def ExtractFeaturesForDirsList(args, dirs):
     try:
         p = multiprocessing.Pool(4)
         p.starmap(ParallelExtractDir, zip(itertools.repeat(args), list(dirs)))
-        # for dir in dirs:
-        #    ExtractFeaturesForDir(args, dir, "")
         output_files = os.listdir(TMP_DIR)
         for f in output_files:
             os.system("cat %s/%s" % (TMP_DIR, f))

@@ -8,48 +8,80 @@ from argparse import ArgumentParser
 
 
 def parse_vocab(path, min_frequency=1):
-    with open(path) as file:
-        total_lines = 0
-        word_to_freq = {}
-        for line in file:
-            line_ = line.split(" ")
-            if len(line_) != 2 or int(line_[1]) < min_frequency:
-                continue
-            word_to_freq[line_[0]] = line_[1]
-            total_lines += 1
-    if total_lines == 0:
-        Exception("Empty or incorrect file given. Path: " + path)
-    return word_to_freq
+    """
+        Parse token and paths vocabs. Creates word to frequency dicts for future uploading to the Vocab.
+
+        Note that parsed file generated from functions with limited targets in parse_target_vocab
+    Args:
+        path (): string contains path to file with parsed pairs "word frequency"
+        min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
+                            to the dict
+
+    Raises:
+        Exception if file opened from path is empty or doesn't content any matching required pair line.
+    Returns:
+        dict containing words in keys and their frequencies in values.
+    """
+
+    with open(path, "r") as file:
+        word_to_freq = (line.split(" ") for line in file)
+        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
+        word_to_freq = dict(word_to_freq)
+    if len(word_to_freq) != 0:
+        return word_to_freq
+    raise Exception("Empty or incorrect file given. Path: " + path)
 
 
 def parse_target_vocab(path, min_frequency=1):
-    with open(path) as file:
-        total_lines = 0
-        word_to_freq = []
-        for line in file:
-            line_ = line.split(" ")
-            if len(line_) != 2 or int(line_[1]) < min_frequency:
-                continue
-            word_to_freq.append((line_[0], line_[1]))
-            total_lines += 1
-        word_to_freq.sort(key=lambda line: line[1])
+    """
+        Parse target vocab. Creates word to frequency dicts and limit them by two hyper-parameters: minimal frequency and
+        total number of targets. The second one is protection from bad minimal frequency.
+
+        According to parsed dictionary functions in dataset will be filtered.
+    Args:
+        path (): string contains path to file with parsed pairs "word frequency"
+        min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
+                            to the dict
+
+    Raises:
+        Exception if file opened from path is empty or doesn't content any matching required pair line.
+    Returns:
+        dict containing words in keys and their frequencies in values.
+    """
+    with open(path, 'r') as file:
+        word_to_freq = (line.split(" ") for line in file)
+        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
+        word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
         word_to_freq = dict(word_to_freq[:config.config.TARGET_VOCAB_SIZE])
-    if total_lines == 0:
-        Exception("Empty or incorrect file given. Path: " + path)
-    return word_to_freq
+    if len(word_to_freq) != 0: return word_to_freq
+    raise Exception("Empty or incorrect file given. Path: " + path)
 
 
 def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
+    """
+        Dumps generated word to frequency dictionaries to .c2v.dict file usign pickle
+    """
     output_file_path = output_filename + ".c2v.dict"
     with open(output_file_path, "wb") as file:
         pickle.dump(word_freq, file)
         pickle.dump(path_freq, file)
         pickle.dump(target_freq, file)
-        print(
-            "Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
+        print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
-def process_file(file_path, max_contexts, out_file_path, target_freq, data_role):
+def process_file(file_path, max_contexts, out_file_path, target_freq):
+    """
+        Process file with AST paths, generate new csv file with correct number of context (each line should have similar
+        number of tuple (leave, path, leave) even if it is empty
+    Args:
+        file_path (): path to file containing AST paths to be parsed
+        max_contexts (): limit max number of paths in AST for each fucntion.
+            Functions with lower number of paths will be filled with empty ones.
+        out_file_path (): path to csv file that will be generated
+        target_freq (): word to frequency dict that will filter functions before adding them to csv.
+    Returns:
+        nothing
+    """
     with open(file_path, 'r') as file:
         with open(out_file_path + '.csv', 'w') as output:
             for line in file:
@@ -60,8 +92,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq, data_role)
                     if len(contexts) > max_contexts:
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))
-                    output.write(
-                        target + " " + " ".join(contexts) + empty_filler + "\n")
+                    output.write(f"{target} {' '.join(contexts)}{empty_filler }\n")
     print("processed file + " + file_path)
     print("generated file + " + out_file_path + ".csv")
 
