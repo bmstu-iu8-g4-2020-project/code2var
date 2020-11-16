@@ -22,7 +22,7 @@ import spoon.refactoring.CtRenameGenericVariableRefactoring;
 import spoon.reflect.declaration.*;
 import spoon.support.compiler.VirtualFile;
 
-public class ExtractFeaturesTask implements Callable<Void> {
+public class ExtractFeaturesTask implements Runnable {
     CommandLineValues m_CommandLineValues;
     Path filePath;
     String code = null;
@@ -42,11 +42,17 @@ public class ExtractFeaturesTask implements Callable<Void> {
     }
 
     @Override
-    public Void call() throws Exception {
-        //System.err.println("Extracting file: " + filePath);
-        processFile();
-        //System.err.println("Done with file: " + filePath);
-        return null;
+    public void run() {
+        try {
+            if (m_CommandLineValues.Obfuscate) {
+                obfuscateCode();
+            }
+            processFile();
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     public void obfuscateCode() {
@@ -184,4 +190,9 @@ public class ExtractFeaturesTask implements Callable<Void> {
         }
         return StringUtils.join(methodsOutputs, "\n");
     }
+
+    public String filename(){
+        return filePath.toString();
+    }
+
 }

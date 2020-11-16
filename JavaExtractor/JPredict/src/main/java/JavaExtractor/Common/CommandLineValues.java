@@ -25,7 +25,7 @@ public class CommandLineValues {
 	public boolean NoHash = false;
 
 	@Option(name = "--num_threads", required = false)
-	public int NumThreads = 32;
+	public int NumThreads = 1;
 
 	@Option(name = "--min_code_len", required = false)
 	public int MinCodeLength = 1;
@@ -44,6 +44,9 @@ public class CommandLineValues {
 
 	@Option(name = "--obfuscate", required = false)
 	public boolean Obfuscate = false;
+
+	@Option(name = "--timeout", required = false)
+	public int Timeout = 1;
 
 
 	public CommandLineValues(String... args) throws CmdLineException {

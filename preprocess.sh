@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Copyright 2020 RKulagin
 set -e
 
 DATASET_NAME=java-small
@@ -20,7 +19,7 @@ MAX_CONTEXTS=300
 WORD_VOCABULARY_SIZE=1301136 # As in original c2v. I don't know why this value
 PATH_VOCABULARY_SIZE=911417
 TARGET_VOCABULARY_SIZE=261245
-THREADS=64
+THREADS=1
 MAX_PATH_LENGTH=8
 MAX_PATH_WIDTH=2
 OBFUSCATING=true
@@ -55,39 +54,58 @@ echo "Obfuscating flag set " ${OBFUSCATING}
 # Extract AST path for code2vec
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING} > ${TRAIN_PATH_VEC}
+  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}vec_processing.log
+
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TRAIN_PATH_VEC}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING} > ${TEST_PATH_VEC}
+  --dir ${TEST_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${TEST_FILES_DIR}vec_processing.log
+
+find ${TEST_FILES_DIR} -name '*.data.log' -exec cat {} > ${TEST_PATH_VEC} \;
+find ${TEST_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TEST_PATH_VEC}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING} > ${VALIDATION_PATH_VEC}
+  --dir ${VALIDATION_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${VALIDATION_FILES_DIR}vec_processing.log
+
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec cat {} > ${VALIDATION_PATH_VEC} \;
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${VALIDATION_PATH_VEC}"
 
 # Extract AST path for code2var
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING}> ${TRAIN_PATH_VAR}
+  --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}var_processing.log
+
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
 echo "Processing test files from "${TEST_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}> ${TEST_PATH_VAR}
+  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${TEST_FILES_DIR}var_processing.log
+
+find ${TEST_FILES_DIR} -name '*.data.log' -exec cat {} > ${TEST_PATH_VAR} \;
+find ${TEST_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TEST_PATH_VAR}"
 
 echo "Processing train files from "${VALIDATION_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING}> ${VALIDATION_PATH_VAR}
+  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${VALIDATION_FILES_DIR}var_processing.log
+
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec cat {} > ${VALIDATION_PATH_VAR} \;
+find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
+
 echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 
 # Generate vocabularies for train code2vec
 
-echo "Generating vocabularies from ${TRAIN_PATH_VEC}"
+echo "Generating target histogram from ${TRAIN_PATH_VEC}"
 cut -d ' ' -f1 < ${TRAIN_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY}
 cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | \
 awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${LEAVES_VOCABULARY}
