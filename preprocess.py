@@ -29,8 +29,7 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
         word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
-        if limit is not None:
-            word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
+        word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
         word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
         return word_to_freq
