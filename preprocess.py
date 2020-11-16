@@ -147,11 +147,16 @@ if __name__ == '__main__':
         process_file(file_path=data_path,
                      max_contexts=int(args.max_contexts),
                      target_freq=target_freq,
-                     out_file_path=args.output_name + "." + data_role,
-                     data_role=data_role)
+                     out_file_path=args.output_name + "." + data_role)
 
+    # Generate token - frequency file to future parsing in parse_vocab.
+    # Splits csv file by space remove path and generate frequency for each line.
+    # csv is split instead of .code2vec because we don't want redundant tokens from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
               "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
+    # Generate path - frequency file to future parsing in parse_vocab.
+    # Splits csv file by space remove tokens and generate frequency for each line.
+    # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
               "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
 
