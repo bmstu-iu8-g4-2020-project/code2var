@@ -29,20 +29,17 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
         word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
-        if limit is None:
-            word_to_freq = dict(word_to_freq)
-        else:
+        if limit is not None:
             word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
-            word_to_freq = dict(word_to_freq[:limit])
+        word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
         return word_to_freq
     raise ValueError("Empty or incorrect file given. Path: " + path)
 
 
-
 def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
     """
-        Dumps generated word to frequency dictionaries to .c2v.dict file usign pickle
+        Dumps generated word to frequency dictionaries to .c2v.dict file using pickle
     """
     output_file_path = output_filename + ".c2v.dict"
     with open(output_file_path, "wb") as file:
@@ -135,13 +132,15 @@ if __name__ == '__main__':
     # Generate token - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove path and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant tokens from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
+    os.system(
+        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
+        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
+    os.system(
+        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
+        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
 
     path_freq = parse_vocab(args.path_histogram)
     word_freq = parse_vocab(args.word_histogram)
