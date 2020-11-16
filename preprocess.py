@@ -21,7 +21,7 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
                             to the dict
         limit (): optional hyper-parameter that should protect freq_dicts from being too big if minimal frequency is too low.
     Raises:
-        Exception if file opened from path is empty or doesn't content any matching required pair line.
+        ValueError if file opened from path is empty or doesn't content any matching required pair line.
     Returns:
         dict containing words in keys and their frequencies in values.
     """
