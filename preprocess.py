@@ -5,18 +5,21 @@ import random
 import config
 
 from argparse import ArgumentParser
+from typing import Optional
 
 
-def parse_vocab(path, min_frequency=1):
+def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
     """
-        Parse token and paths vocabs. Creates word to frequency dicts for future uploading to the Vocab.
+        Parse histogram files containing target|token|path and their frequency pairs.
+        Creates word to frequency dicts for future uploading to the Vocab.
 
-        Note that parsed file generated from functions with limited targets in parse_target_vocab
+        Note that parsed file for token and path should be generated from functions with pre-limited targets to avoid
+        redundant data in token and path freq_dicts.
     Args:
         path (): string contains path to file with parsed pairs "word frequency"
         min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
                             to the dict
-
+        limit (): optional hyper-parameter that should protect freq_dicts from being too big if minimal frequency is too low.
     Raises:
         Exception if file opened from path is empty or doesn't content any matching required pair line.
     Returns:
@@ -24,37 +27,17 @@ def parse_vocab(path, min_frequency=1):
     """
 
     with open(path, "r") as file:
-        word_to_freq = (line.split(" ") for line in file)
+        word_to_freq = (line.rstrip("\n").split(" ") for line in file)
         word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
-        word_to_freq = dict(word_to_freq)
+        if limit is None:
+            word_to_freq = dict(word_to_freq)
+        else:
+            word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
+            word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
         return word_to_freq
-    raise Exception("Empty or incorrect file given. Path: " + path)
+    raise ValueError("Empty or incorrect file given. Path: " + path)
 
-
-def parse_target_vocab(path, min_frequency=1):
-    """
-        Parse target vocab. Creates word to frequency dicts and limit them by two hyper-parameters: minimal frequency and
-        total number of targets. The second one is protection from bad minimal frequency.
-
-        According to parsed dictionary functions in dataset will be filtered.
-    Args:
-        path (): string contains path to file with parsed pairs "word frequency"
-        min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
-                            to the dict
-
-    Raises:
-        Exception if file opened from path is empty or doesn't content any matching required pair line.
-    Returns:
-        dict containing words in keys and their frequencies in values.
-    """
-    with open(path, 'r') as file:
-        word_to_freq = (line.split(" ") for line in file)
-        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
-        word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
-        word_to_freq = dict(word_to_freq[:config.config.TARGET_VOCAB_SIZE])
-    if len(word_to_freq) != 0: return word_to_freq
-    raise Exception("Empty or incorrect file given. Path: " + path)
 
 
 def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
@@ -80,7 +63,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
         out_file_path (): path to csv file that will be generated
         target_freq (): word to frequency dict that will filter functions before adding them to csv.
     Returns:
-        nothing
+        None
     """
     with open(file_path, 'r') as file:
         with open(out_file_path + '.csv', 'w') as output:
@@ -92,7 +75,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
                     if len(contexts) > max_contexts:
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))
-                    output.write(f"{target} {' '.join(contexts)}{empty_filler }\n")
+                    output.write(f"{target} {' '.join(contexts)}{empty_filler}\n")
     print("processed file + " + file_path)
     print("generated file + " + out_file_path + ".csv")
 
@@ -138,7 +121,7 @@ if __name__ == '__main__':
     test_data_path_var = args.train_data_path_var
     val_data_path_var = args.val_data_path_var
 
-    target_freq = parse_target_vocab(args.target_histogram)
+    target_freq = parse_vocab(args.target_histogram, limit=config.config.TARGET_VOCAB_SIZE)
 
     for data_path, data_role in zip(
             [test_data_path_vec, val_data_path_vec, train_data_path_vec],
