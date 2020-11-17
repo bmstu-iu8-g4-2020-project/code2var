@@ -125,3 +125,5 @@ ${PYTHON} preprocess.py --train_data_vec ${TRAIN_PATH_VEC} --test_data_vec ${TES
   --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2vec
 
 # Preprocess for code2var
+
+
