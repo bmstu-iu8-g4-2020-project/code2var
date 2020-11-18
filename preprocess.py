@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from typing import Optional
 
 
-def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
+def parse_vocab(path, min_frequency: int = 1, limit: Optional[int] = None):
     """
         Parse histogram files containing target|token|path and their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
@@ -28,7 +28,7 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
 
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
-        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
+        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > int(min_frequency), word_to_freq)
         word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
         word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
@@ -36,7 +36,8 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
     raise ValueError("Empty or incorrect file given. Path: " + path)
 
 
-def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
+def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_freq_val, word_freq, output_filename):
+
     """
         Dumps generated word to frequency dictionaries to .c2v.dict file using pickle
     """
@@ -44,7 +45,9 @@ def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
     with open(output_file_path, "wb") as file:
         pickle.dump(word_freq, file)
         pickle.dump(path_freq, file)
-        pickle.dump(target_freq, file)
+        pickle.dump(target_freq_train, file)
+        pickle.dump(target_freq_test, file)
+        pickle.dump(target_freq_val, file)
         print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
@@ -102,12 +105,17 @@ if __name__ == '__main__':
                         metavar="FILE", required=True)
     parser.add_argument("--path_histogram", dest="path_histogram",
                         metavar="FILE", required=True)
-    parser.add_argument("--target_histogram", dest="target_histogram",
+    parser.add_argument("--target_histogram_train", dest="target_histogram_train",
+                        metavar="FILE", required=True)
+    parser.add_argument("--target_histogram_test", dest="target_histogram_test",
+                        metavar="FILE", required=True)
+    parser.add_argument("--target_histogram_val", dest="target_histogram_val",
                         metavar="FILE", required=True)
     parser.add_argument("--net", dest="net", required=True)
     parser.add_argument("--output_name", dest="output_name", metavar="FILE",
                         required=True,
                         default='data')
+    parser.add_argument("--occurrences", dest="min_occurrences", required=False, default=int(1))
     args = parser.parse_args()
 
     train_data_path_vec = args.train_data_path_vec
@@ -117,15 +125,16 @@ if __name__ == '__main__':
     test_data_path_var = args.train_data_path_var
     val_data_path_var = args.val_data_path_var
 
-    target_freq = parse_vocab(args.target_histogram, limit=config.config.TARGET_VOCAB_SIZE)
+    target_freq_train = parse_vocab(args.target_histogram_train, min_frequency=args.min_occurrences)
+    target_freq_test = parse_vocab(args.target_histogram_test, min_frequency=args.min_occurrences)
+    target_freq_val = parse_vocab(args.target_histogram_val, min_frequency=args.min_occurrences)
 
-    for data_path, data_role in zip(
-            [test_data_path_vec, val_data_path_vec, train_data_path_vec],
-            ['test_vec', 'val_vec', 'train_vec', 'test_var', 'val_var',
-             'train_var']):
+    for data_path, data_role in zip([test_data_path_vec, val_data_path_vec, train_data_path_vec],
+                                    ['test_vec', 'val_vec', 'train_vec', 'test_var', 'val_var',
+                                     'train_var']):
         process_file(file_path=data_path,
                      max_contexts=int(args.max_contexts),
-                     target_freq=target_freq,
+                     target_freq=target_freq_train,
                      out_file_path=args.output_name + "." + data_role)
 
     # Generate token - frequency file to future parsing in parse_vocab.
@@ -144,6 +153,10 @@ if __name__ == '__main__':
     path_freq = parse_vocab(args.path_histogram)
     word_freq = parse_vocab(args.word_histogram)
 
-    save_dictionaries(target_freq=target_freq, path_freq=path_freq,
-                      word_freq=word_freq,
+    save_dictionaries(target_freq_train=target_freq_train, 
+                      target_freq_val=target_freq_val, 
+                      target_freq_test=target_freq_test, 
+                      path_freq=path_freq,
+                      word_freq=word_freq, 
                       output_filename=args.output_name)
+    
