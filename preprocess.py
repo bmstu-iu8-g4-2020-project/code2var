@@ -85,25 +85,25 @@ if __name__ == '__main__':
     parser.add_argument("--val_data_vec", dest="val_data_path_vec",
                         required=True)
     parser.add_argument("--train_data_var", dest="train_data_path_var",
-                        required=True)
+                        required=False)
     parser.add_argument("--test_data_var", dest="test_data_path_var",
-                        required=True)
+                        required=False)
     parser.add_argument("--val_data_var", dest="val_data_path_var",
-                        required=True)
+                        required=False)
     parser.add_argument("--max_contexts", dest="max_contexts", default=200,
                         required=False)
-    parser.add_argument("--word_vocab_size", dest="word_vocab_size",
-                        default=1301136, required=False)
-    parser.add_argument("--path_vocab_size", dest="path_vocab_size",
-                        default=911417, required=False)
-    parser.add_argument("--target_vocab_size", dest="target_vocab_size",
-                        default=261245, required=False)
-    parser.add_argument("--word_histogram", dest="word_histogram",
+    parser.add_argument("--word_histogram_vec", dest="word_histogram_vec",
                         metavar="FILE", required=True)
-    parser.add_argument("--path_histogram", dest="path_histogram",
+    parser.add_argument("--path_histogram_vec", dest="path_histogram_vec",
                         metavar="FILE", required=True)
-    parser.add_argument("--target_histogram", dest="target_histogram",
+    parser.add_argument("--target_histogram_vec", dest="target_histogram_vec",
                         metavar="FILE", required=True)
+    parser.add_argument("--word_histogram_var", dest="word_histogram_var",
+                        metavar="FILE", required=False)
+    parser.add_argument("--path_histogram_var", dest="path_histogram_var",
+                        metavar="FILE", required=False)
+    parser.add_argument("--target_histogram_var", dest="target_histogram_var",
+                        metavar="FILE", required=False)
     parser.add_argument("--net", dest="net", required=True)
     parser.add_argument("--output_name", dest="output_name", metavar="FILE",
                         required=True,
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     test_data_path_var = args.train_data_path_var
     val_data_path_var = args.val_data_path_var
 
-    target_freq = parse_vocab(args.target_histogram, limit=config.config.TARGET_VOCAB_SIZE)
+    target_freq_vec = parse_vocab(args.target_histogram_vec, limit=config.config.TARGET_VOCAB_SIZE)
 
     for data_path, data_role in zip(
             [test_data_path_vec, val_data_path_vec, train_data_path_vec],
@@ -125,25 +125,50 @@ if __name__ == '__main__':
              'train_var']):
         process_file(file_path=data_path,
                      max_contexts=int(args.max_contexts),
-                     target_freq=target_freq,
+                     target_freq=target_freq_vec,
                      out_file_path=args.output_name + "." + data_role)
 
     # Generate token - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove path and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant tokens from not filtered functions to be included.
-    os.system(
-        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
-        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
+    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram_vec}")
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
-    os.system(
-        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
-        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
+    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram_vec}")
 
-    path_freq = parse_vocab(args.path_histogram)
-    word_freq = parse_vocab(args.word_histogram)
+    path_freq_vec = parse_vocab(args.path_histogram_vec)
+    word_freq_vec = parse_vocab(args.word_histogram_vec)
+    save_dictionaries(target_freq=target_freq_vec, path_freq=path_freq_vec,
+                      word_freq=word_freq_vec,
+                      output_filename=args.output_name+".vec")
 
-    save_dictionaries(target_freq=target_freq, path_freq=path_freq,
-                      word_freq=word_freq,
-                      output_filename=args.output_name)
+    if args.net == "code2var":
+        target_freq_var = parse_vocab(args.target_histogram_var, limit=config.config.TARGET_VOCAB_SIZE)
+
+        for data_path, data_role in zip(
+                [test_data_path_var, val_data_path_var, train_data_path_var],
+                ['test_var', 'val_var', 'train_var']):
+            process_file(file_path=data_path,
+                         max_contexts=int(args.max_contexts),
+                         target_freq=target_freq_var,
+                         out_file_path=args.output_name + "." + data_role)
+
+        # Generate token - frequency file to future parsing in parse_vocab.
+        # Splits csv file by space remove path and generate frequency for each line.
+        # csv is split instead of .code2vec because we don't want redundant tokens from not filtered functions to be included.
+        os.system(f"cut -d' ' -f2- < {args.output_name + '.train_var.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
+                  "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram_var}")
+        # Generate path - frequency file to future parsing in parse_vocab.
+        # Splits csv file by space remove tokens and generate frequency for each line.
+        # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
+        os.system(f"cut -d' ' -f2- < {args.output_name + '.train_var.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
+                  "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram_var}")
+        path_freq_var = parse_vocab(args.path_histogram_var)
+        word_freq_var = parse_vocab(args.word_histogram_var)
+
+        save_dictionaries(target_freq=target_freq_var, path_freq=path_freq_var,
+                          word_freq=word_freq_var,
+                          output_filename=args.output_name+".var")
