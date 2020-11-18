@@ -37,6 +37,7 @@ def parse_vocab(path, min_frequency: int = 1, limit: Optional[int] = None):
 
 
 def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_freq_val, word_freq, output_filename):
+
     """
         Dumps generated word to frequency dictionaries to .c2v.dict file using pickle
     """
@@ -139,13 +140,15 @@ if __name__ == '__main__':
     # Generate token - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove path and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant tokens from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
+    os.system(
+        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
+        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.word_histogram}")
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
+    os.system(
+        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
+        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram}")
 
     path_freq = parse_vocab(args.path_histogram)
     word_freq = parse_vocab(args.word_histogram)
