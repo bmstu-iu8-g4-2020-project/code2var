@@ -60,7 +60,7 @@ public class App {
                 while (executor.getTaskCount() - executor.getCompletedTaskCount() > 8) {
                 } // prevent from creating a lot of threads in memory.
                 System.err.println(executor.getActiveCount() + " Total:" + executor.getTaskCount() + " Compl." + executor.getCompletedTaskCount() + " IN QUEUE:" + (executor.getTaskCount() - executor.getCompletedTaskCount()));
-                executor.execute(new TimeoutCaller(task, s_CommandLineValues.Timeout * 10, task.filename()));
+                executor.execute(new TimeoutCaller(task, s_CommandLineValues.Timeout, task.filename()));
             }
         } finally {
             executor.shutdown();

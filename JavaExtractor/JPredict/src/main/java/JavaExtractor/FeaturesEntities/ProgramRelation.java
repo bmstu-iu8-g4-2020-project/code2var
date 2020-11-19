@@ -8,8 +8,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 public class ProgramRelation {
-	private Property m_Source;
-	private Property m_Target;
+	private String m_Source;
+	private String m_Target;
 	private String m_HashedPath;
 	private String m_Path;
 	@SuppressWarnings("FieldCanBeLocal")
@@ -17,7 +17,7 @@ public class ProgramRelation {
 	private ArrayList<String> result;
 	public static Function<String, String> s_Hasher = (s) -> Integer.toString(s.hashCode());
 
-	public ProgramRelation(Property sourceName, Property targetName, String path) {
+	public ProgramRelation(String sourceName, String targetName, String path) {
 		m_Source = sourceName;
 		m_Target = targetName;
 		m_Path = path;
@@ -29,8 +29,8 @@ public class ProgramRelation {
 	}
 
 	public String toString() {
-		return String.format("%s,%s,%s", m_Source.getName(), m_HashedPath,
-				m_Target.getName());
+		return String.format("%s,%s,%s", m_Source, m_HashedPath,
+				m_Target);
 	}
 
 	@JsonIgnore
@@ -39,12 +39,12 @@ public class ProgramRelation {
 	}
 
 	@JsonIgnore
-	public Property getSource() {
+	public String getSource() {
 		return m_Source;
 	}
 
 	@JsonIgnoreProperties
-	public Property getTarget() {
+	public String getTarget() {
 		return m_Target;
 	}
 

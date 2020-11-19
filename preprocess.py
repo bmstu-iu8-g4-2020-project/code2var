@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from typing import Optional
 
 
-def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
+def parse_vocab(path, min_frequency: int = 1, limit: Optional[int] = None):
     """
         Parse histogram files containing target|token|path and their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
@@ -28,15 +28,16 @@ def parse_vocab(path, min_frequency=1, limit: Optional[int] = None):
 
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
-        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > min_frequency, word_to_freq)
+        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > int(min_frequency), word_to_freq)
         word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
         word_to_freq = dict(word_to_freq[:limit])
+        word_to_freq.pop("null", 0)
     if len(word_to_freq) != 0:
         return word_to_freq
     raise ValueError("Empty or incorrect file given. Path: " + path)
 
 
-def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
+def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_freq_val, word_freq, output_filename):
     """
         Dumps generated word to frequency dictionaries to .c2v.dict file using pickle
     """
@@ -44,7 +45,9 @@ def save_dictionaries(path_freq, target_freq, word_freq, output_filename):
     with open(output_file_path, "wb") as file:
         pickle.dump(word_freq, file)
         pickle.dump(path_freq, file)
-        pickle.dump(target_freq, file)
+        pickle.dump(target_freq_train, file)
+        pickle.dump(target_freq_test, file)
+        pickle.dump(target_freq_val, file)
         print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
@@ -96,36 +99,45 @@ if __name__ == '__main__':
                         metavar="FILE", required=True)
     parser.add_argument("--path_histogram_vec", dest="path_histogram_vec",
                         metavar="FILE", required=True)
-    parser.add_argument("--target_histogram_vec", dest="target_histogram_vec",
+    parser.add_argument("--target_histogram_train", dest="target_histogram_train_vec",
+                        metavar="FILE", required=True)
+    parser.add_argument("--target_histogram_test", dest="target_histogram_test_vec",
+                        metavar="FILE", required=True)
+    parser.add_argument("--target_histogram_val", dest="target_histogram_val_vec",
                         metavar="FILE", required=True)
     parser.add_argument("--word_histogram_var", dest="word_histogram_var",
                         metavar="FILE", required=False)
     parser.add_argument("--path_histogram_var", dest="path_histogram_var",
                         metavar="FILE", required=False)
-    parser.add_argument("--target_histogram_var", dest="target_histogram_var",
+    parser.add_argument("--target_histogram_train_var", dest="target_histogram_train_var",
+                        metavar="FILE", required=False)
+    parser.add_argument("--target_histogram_test_var", dest="target_histogram_test_var",
+                        metavar="FILE", required=False)
+    parser.add_argument("--target_histogram_val_var", dest="target_histogram_val_var",
                         metavar="FILE", required=False)
     parser.add_argument("--net", dest="net", required=True)
     parser.add_argument("--output_name", dest="output_name", metavar="FILE",
                         required=True,
                         default='data')
+    parser.add_argument("--occurrences", dest="min_occurrences", required=False, default=int(0))
     args = parser.parse_args()
 
     train_data_path_vec = args.train_data_path_vec
     test_data_path_vec = args.test_data_path_vec
     val_data_path_vec = args.val_data_path_vec
     train_data_path_var = args.train_data_path_var
-    test_data_path_var = args.train_data_path_var
+    test_data_path_var = args.test_data_path_var
     val_data_path_var = args.val_data_path_var
 
-    target_freq_vec = parse_vocab(args.target_histogram_vec, limit=config.config.TARGET_VOCAB_SIZE)
+    target_freq_train_vec = parse_vocab(args.target_histogram_train_vec, min_frequency=args.min_occurrences)
+    target_freq_test_vec = parse_vocab(args.target_histogram_test_vec, min_frequency=args.min_occurrences)
+    target_freq_val_vec = parse_vocab(args.target_histogram_val_vec, min_frequency=args.min_occurrences)
 
-    for data_path, data_role in zip(
-            [test_data_path_vec, val_data_path_vec, train_data_path_vec],
-            ['test_vec', 'val_vec', 'train_vec', 'test_var', 'val_var',
-             'train_var']):
+    for data_path, data_role in zip([test_data_path_vec, val_data_path_vec, train_data_path_vec],
+                                    ['test_vec', 'val_vec', 'train_vec']):
         process_file(file_path=data_path,
                      max_contexts=int(args.max_contexts),
-                     target_freq=target_freq_vec,
+                     target_freq=target_freq_train_vec,
                      out_file_path=args.output_name + "." + data_role)
 
     # Generate token - frequency file to future parsing in parse_vocab.
@@ -136,24 +148,31 @@ if __name__ == '__main__':
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec because we don't want redundant paths from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram_vec}")
+    os.system(
+        f"cut -d' ' -f2- < {args.output_name + '.train_vec.csv'} | tr ' ' '\n' | cut -d',' -f2 | "
+        "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{args.path_histogram_vec}")
 
     path_freq_vec = parse_vocab(args.path_histogram_vec)
     word_freq_vec = parse_vocab(args.word_histogram_vec)
-    save_dictionaries(target_freq=target_freq_vec, path_freq=path_freq_vec,
+
+    save_dictionaries(target_freq_train=target_freq_train_vec,
+                      target_freq_val=target_freq_val_vec,
+                      target_freq_test=target_freq_test_vec,
+                      path_freq=path_freq_vec,
                       word_freq=word_freq_vec,
-                      output_filename=args.output_name+".vec")
+                      output_filename=args.output_name)
 
     if args.net == "code2var":
-        target_freq_var = parse_vocab(args.target_histogram_var, limit=config.config.TARGET_VOCAB_SIZE)
+        target_freq_train_var = parse_vocab(args.target_histogram_train_var, min_frequency=args.min_occurrences)
+        target_freq_test_var = parse_vocab(args.target_histogram_test_var, min_frequency=args.min_occurrences)
+        target_freq_val_var = parse_vocab(args.target_histogram_val_var, min_frequency=args.min_occurrences)
 
         for data_path, data_role in zip(
                 [test_data_path_var, val_data_path_var, train_data_path_var],
                 ['test_var', 'val_var', 'train_var']):
             process_file(file_path=data_path,
                          max_contexts=int(args.max_contexts),
-                         target_freq=target_freq_var,
+                         target_freq=target_freq_train_var,
                          out_file_path=args.output_name + "." + data_role)
 
         # Generate token - frequency file to future parsing in parse_vocab.
@@ -169,6 +188,7 @@ if __name__ == '__main__':
         path_freq_var = parse_vocab(args.path_histogram_var)
         word_freq_var = parse_vocab(args.word_histogram_var)
 
-        save_dictionaries(target_freq=target_freq_var, path_freq=path_freq_var,
+        save_dictionaries(target_freq_train=target_freq_train_var, target_freq_test=target_freq_test_var,
+                          target_freq_val=target_freq_val_var, path_freq=path_freq_var,
                           word_freq=word_freq_var,
-                          output_filename=args.output_name+".var")
+                          output_filename=args.output_name + ".var")

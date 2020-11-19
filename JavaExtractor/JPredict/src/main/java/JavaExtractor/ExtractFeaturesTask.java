@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -49,8 +50,7 @@ public class ExtractFeaturesTask implements Runnable {
             }
             processFile();
 
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -115,6 +115,7 @@ public class ExtractFeaturesTask implements Runnable {
             return;
         }
         String newName = generateName(12);
+
         obfuscatedNames.put(newName, var.getSimpleName());
         new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
     }
@@ -159,9 +160,19 @@ public class ExtractFeaturesTask implements Runnable {
         FeatureExtractor featureExtractor = new FeatureExtractor(m_CommandLineValues);
 
         ArrayList<ProgramFeatures> features = featureExtractor.extractFeatures(code);
-        if (m_CommandLineValues.OnlyVars && m_CommandLineValues.Obfuscate){
-            for (ProgramFeatures feature: features){
-                feature.setName(obfuscatedNames.get(feature.getName()));
+
+        if (m_CommandLineValues.OnlyVars) {
+            for (ProgramFeatures feature : features) {
+                String originalName = feature.getName();
+                if (m_CommandLineValues.Obfuscate && obfuscatedNames.get(originalName) != null ){
+                    feature.setName(obfuscatedNames.get(originalName));
+                }
+                ArrayList<String> splitNameParts = Common.splitToSubtokens(feature.getName());
+                String splitName = feature.getName();
+                if (splitNameParts.size() > 0) {
+                    splitName = splitNameParts.stream().collect(Collectors.joining(Common.internalSeparator));
+                }
+                feature.setName(splitName);
             }
         }
         return features;
@@ -191,7 +202,7 @@ public class ExtractFeaturesTask implements Runnable {
         return StringUtils.join(methodsOutputs, "\n");
     }
 
-    public String filename(){
+    public String filename() {
         return filePath.toString();
     }
 

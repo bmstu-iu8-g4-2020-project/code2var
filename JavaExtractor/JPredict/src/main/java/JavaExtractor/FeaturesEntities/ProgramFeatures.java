@@ -3,15 +3,24 @@ package JavaExtractor.FeaturesEntities;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
+import JavaExtractor.Common.CommandLineValues;
+import JavaExtractor.Common.Common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ProgramFeatures {
-	private String name;
+	private CommandLineValues m_CommandLineValues;
 
+
+	private String name;
+	private String normalizedName;
 	private ArrayList<ProgramRelation> features = new ArrayList<>();
 
-	public ProgramFeatures(String name) {
+
+	public ProgramFeatures(String name, CommandLineValues commandLineValues) {
 		this.name = name;
+		this.normalizedName = Common.normalizeName(name, Common.BlankWord);
+		this.m_CommandLineValues = commandLineValues;
+
 	}
 
 	@SuppressWarnings("StringBufferReplaceableByString")
@@ -25,7 +34,15 @@ public class ProgramFeatures {
 	}
 
 	public void addFeature(Property source, String path, Property target) {
-		ProgramRelation newRelation = new ProgramRelation(source, target, path);
+		String sourceName = source.getName();
+		String targetName = target.getName();
+		if (m_CommandLineValues.OnlyVars && source.getName().equals(this.normalizedName)){
+			sourceName = Common.variableName;
+		}
+		if (m_CommandLineValues.OnlyVars && target.getName().equals(this.normalizedName)){
+			targetName = Common.variableName;
+		}
+		ProgramRelation newRelation = new ProgramRelation(sourceName, targetName, path);
 		features.add(newRelation);
 	}
 

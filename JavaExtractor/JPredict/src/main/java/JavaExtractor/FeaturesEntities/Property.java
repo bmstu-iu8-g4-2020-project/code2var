@@ -87,4 +87,5 @@ public class Property {
 	public String getName() {
 		return Name;
 	}
+
 }

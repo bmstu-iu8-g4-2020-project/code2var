@@ -1,6 +1,7 @@
 package JavaExtractor.Common;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -31,6 +32,7 @@ public final class Common {
 
 	public static final int c_MaxLabelLength = 50;
 	public static final String methodName = "METHOD_NAME";
+	public static final String variableName = "VARIABLE_NAME";
 	public static final String internalSeparator = "|";
 
 	public static String normalizeName(String original, String defaultString) {
@@ -69,6 +71,11 @@ public final class Common {
 	}
 
 	public static ArrayList<String> splitToSubtokens(String str1) {
+		if (str1==null){
+			ArrayList<String> a = new ArrayList<String>();
+			a.add(BlankWord);
+			return a;
+		}
 		String str2 = str1.trim();
 		return Stream.of(str2.split("(?<=[a-z])(?=[A-Z])|_|[0-9]|(?<=[A-Z])(?=[A-Z][a-z])|\\s+"))
 				.filter(s -> s.length() > 0).map(s -> Common.normalizeName(s, Common.EmptyString))
