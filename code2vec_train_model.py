@@ -123,51 +123,69 @@ if __name__ == "__main__":
                         dest="dataset_name",
                         help="dataset name",
                         required=True)
+    parser.add_argument("--train",
+                        dest="train",
+                        type=bool,
+                        help="train net?",
+                        required=False,
+                        default=False)
+    parser.add_argument("--test",
+                        dest="test",
+                        type=bool,
+                        help="test net on test dataset?",
+                        required=False,
+                        default=False)
     parser.add_argument("--checkpoints_dir",
                         dest="checkpoints_dir",
                         help="Dir for checkpoints",
                         required=False,
                         default="training")
+    parser.add_argument("--net",
+                        dest="net",
+                        help="net destination type var or vec",
+                        required=False,
+                        default="vec")
     args = parser.parse_args()
 
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-    config.config.CREATE_VOCAB = True
-    config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.c2v.dict"
-    c2v_vocabs = Code2VecVocabs()
-    pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                            csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.train_vec.csv")
-    dataset = pcr.get_dataset()
-    # init lookups
+    if args.train:
+        config.config.CREATE_VOCAB = True
+        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.c2v.dict"
+        c2v_vocabs = Code2VecVocabs()
+        pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
+                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.train_{args.net}.csv")
+        dataset = pcr.get_dataset()
+        # init lookups
 
-    c2v_vocabs.target_vocab.get_word_to_index_lookup_table()
-    c2v_vocabs.token_vocab.get_word_to_index_lookup_table()
-    c2v_vocabs.path_vocab.get_word_to_index_lookup_table()
+        c2v_vocabs.target_vocab.get_word_to_index_lookup_table()
+        c2v_vocabs.token_vocab.get_word_to_index_lookup_table()
+        c2v_vocabs.path_vocab.get_word_to_index_lookup_table()
 
-    TOKEN_VOCAB_SIZE = c2v_vocabs.token_vocab.lookup_table_word_to_index.size().numpy()
-    TARGET_VOCAB_SIZE = c2v_vocabs.target_vocab.lookup_table_word_to_index.size().numpy()
-    PATH_VOCAB_SIZE = c2v_vocabs.path_vocab.lookup_table_word_to_index.size().numpy()
-    tf.random.set_seed(42)
-    model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
-                     path_vocab_size=PATH_VOCAB_SIZE)
+        TOKEN_VOCAB_SIZE = c2v_vocabs.token_vocab.lookup_table_word_to_index.size().numpy()
+        TARGET_VOCAB_SIZE = c2v_vocabs.target_vocab.lookup_table_word_to_index.size().numpy()
+        PATH_VOCAB_SIZE = c2v_vocabs.path_vocab.lookup_table_word_to_index.size().numpy()
+        tf.random.set_seed(42)
+        model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
+                         path_vocab_size=PATH_VOCAB_SIZE)
 
-    checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}.hdf5"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
+        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}.hdf5"
+        checkpoint_dir = os.path.dirname(checkpoint_path)
 
-    callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                    save_weights_only=True,
-                                                    save_best_only=True,
-                                                    monitor='accuracy',
-                                                    verbose=1),
-                 tf.keras.callbacks.TensorBoard(log_dir='./logs'),
-                 tf.keras.callbacks.EarlyStopping(monitor="loss",
-                                                  min_delta=0.01,
-                                                  mode="auto",
-                                                  ),
-                 tf.keras.callbacks.CSVLogger('training.log')
-                 ]
+        callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                        save_weights_only=True,
+                                                        save_best_only=True,
+                                                        monitor='accuracy',
+                                                        verbose=1),
+                     tf.keras.callbacks.TensorBoard(log_dir='./logs'),
+                     tf.keras.callbacks.EarlyStopping(monitor="loss",
+                                                      min_delta=0.01,
+                                                      mode="auto",
+                                                      ),
+                     tf.keras.callbacks.CSVLogger('training.log')
+                     ]
 
-    val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.test_vec.csv")  # Now it is normal that accuracy arround 0.
-    val_dataset = val_pcr.get_dataset()
+        val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
+                                    csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.test_{args.net}.csv")  # Now it is normal that accuracy arround 0.
+        val_dataset = val_pcr.get_dataset()
 
-    model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks, validation_data=val_dataset)

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+
 DATASET_NAME=java-small
 
 TRAIN_FILES_DIR=dataset/${DATASET_NAME}/training/
