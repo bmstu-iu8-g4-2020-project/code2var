@@ -78,5 +78,5 @@ ${PYTHON} preprocess.py --train_data_vec ${TRAIN_PATH_VEC} --test_data_vec ${TES
   --path_histogram_vec ${PATH_VOCABULARY_VEC} --target_histogram_train_var ${VARIABLES_VOCABULARY_TRAIN} \
   --target_histogram_test_var ${VARIABLES_VOCABULARY_TEST} --target_histogram_val_var ${VARIABLES_VOCABULARY_VAL} \
   --word_histogram_var ${LEAVES_VOCABULARY_VAR} --path_histogram_var ${PATH_VOCABULARY_VAR} \
-  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2var
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2var --occurrences 150
 

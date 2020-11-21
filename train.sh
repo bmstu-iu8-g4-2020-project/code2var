@@ -12,4 +12,4 @@ if [ $# -eq 2 ]
     CHECKPOINTS_DIR_PARAM = --checkpoints_dir $2
 fi
 DATASET_NAME=$1
-${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME $CHECKPOINTS_DIR_PARAM
+${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME $CHECKPOINTS_DIR_PARAM --net var --train true
