@@ -1,6 +1,10 @@
 import os
+from abc import ABC
+
 import config
+import numpy as np
 import tensorflow as tf
+
 
 from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
@@ -26,7 +30,7 @@ class GPUEmbedding(tf.keras.layers.Embedding):
         self.built = True
 
 
-class code2vec(tf.keras.Model):
+class code2vec(tf.keras.Model, ABC):
     def __init__(self,
                  token_vocab_size,
                  target_vocab_size,
@@ -108,6 +112,8 @@ class code2vec(tf.keras.Model):
                 self.history = self.model.fit(dataset, epochs=epochs, callbacks=callbacks, **kwargs)
 
     def load_weights(self, *args, **kwargs):
+        if self.model is None:
+            self.build_model()
         self.model.load_weights(*args, **kwargs)
 
     def evaluate(self,
@@ -115,6 +121,9 @@ class code2vec(tf.keras.Model):
         if self.model is None:
             self.build_model()
         self.model.evaluate(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
 
 
 if __name__ == "__main__":
@@ -133,6 +142,12 @@ if __name__ == "__main__":
                         dest="test",
                         type=bool,
                         help="test net on test dataset?",
+                        required=False,
+                        default=False)
+    parser.add_argument("--run",
+                        dest="run",
+                        type=bool,
+                        help="run net on given dataset and output predictions",
                         required=False,
                         default=False)
     parser.add_argument("--checkpoints_dir",
@@ -165,7 +180,8 @@ if __name__ == "__main__":
         TARGET_VOCAB_SIZE = c2v_vocabs.target_vocab.lookup_table_word_to_index.size().numpy()
         PATH_VOCAB_SIZE = c2v_vocabs.path_vocab.lookup_table_word_to_index.size().numpy()
         tf.random.set_seed(42)
-        model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE, target_vocab_size=TARGET_VOCAB_SIZE,
+        model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE,
+                         target_vocab_size=TARGET_VOCAB_SIZE,
                          path_vocab_size=PATH_VOCAB_SIZE)
 
         checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}.hdf5"
@@ -189,3 +205,24 @@ if __name__ == "__main__":
         val_dataset = val_pcr.get_dataset()
 
         model.train(dataset, 100, callbacks, validation_data=val_dataset)
+
+    if args.run:
+        model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
+                         target_vocab_size=config.config.NET_TARGET_SIZE,
+                         path_vocab_size=config.config.NET_PATH_SIZE)
+        model.load_weights("training/cp-0011.hdf5")
+
+        config.config.CREATE_VOCAB = True
+        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.var.c2v.dict"
+        c2v_vocabs = Code2VecVocabs()
+        pcr = PathContextReader(is_train=False, vocabs=c2v_vocabs,
+                                csv_path=f"tmp_data_for_code2var/data.csv")
+        dataset = pcr.get_dataset()
+        for line, target in dataset:
+            result = model(line)
+            prediction_index = result.numpy().argsort().astype(np.int32)
+            prediction_index = prediction_index[0][:-6:-1]
+            prediction = c2v_vocabs.target_vocab.get_index_to_word_lookup_table().lookup(tf.constant(prediction_index))
+            print(target.numpy(), "->", prediction.numpy())
+            # print(prediction_index)
+            # break

@@ -50,7 +50,7 @@ def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_fre
         print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
 
 
-def process_file(file_path, max_contexts, out_file_path, target_freq):
+def process_file(file_path, max_contexts, out_file_path, target_freq=None):
     """
         Process file with AST paths, generate new csv file with correct number of context (each line should have similar
         number of tuple (leave, path, leave) even if it is empty
@@ -69,7 +69,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
                 contexts = line.rstrip('\n').split(" ")
                 assert len(contexts) > 0
                 target, contexts = contexts[0], contexts[1:]
-                if target in target_freq:
+                if target_freq is None or target in target_freq:
                     if len(contexts) > max_contexts:
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))
@@ -136,11 +136,11 @@ def process_net(target_histogram_train: str,
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--train_data_vec", dest="train_data_path_vec",
-                        required=True)
+                        required=False)
     parser.add_argument("--test_data_vec", dest="test_data_path_vec",
-                        required=True)
+                        required=False)
     parser.add_argument("--val_data_vec", dest="val_data_path_vec",
-                        required=True)
+                        required=False)
     parser.add_argument("--train_data_var", dest="train_data_path_var",
                         required=False)
     parser.add_argument("--test_data_var", dest="test_data_path_var",
@@ -148,32 +148,33 @@ if __name__ == '__main__':
     parser.add_argument("--val_data_var", dest="val_data_path_var",
                         required=False)
     parser.add_argument("--max_contexts", dest="max_contexts", type=int,
-                        default=200, required=False)
+                        default=300)
     parser.add_argument("--word_histogram_vec", dest="word_histogram_vec",
-                        metavar="FILE", required=True)
+                        metavar="FILE")
     parser.add_argument("--path_histogram_vec", dest="path_histogram_vec",
-                        metavar="FILE", required=True)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_train", dest="target_histogram_train_vec",
-                        metavar="FILE", required=True)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_test", dest="target_histogram_test_vec",
-                        metavar="FILE", required=True)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_val", dest="target_histogram_val_vec",
-                        metavar="FILE", required=True)
+                        metavar="FILE")
     parser.add_argument("--word_histogram_var", dest="word_histogram_var",
-                        metavar="FILE", required=False)
+                        metavar="FILE")
     parser.add_argument("--path_histogram_var", dest="path_histogram_var",
-                        metavar="FILE", required=False)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_train_var", dest="target_histogram_train_var",
-                        metavar="FILE", required=False)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_test_var", dest="target_histogram_test_var",
-                        metavar="FILE", required=False)
+                        metavar="FILE")
     parser.add_argument("--target_histogram_val_var", dest="target_histogram_val_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--net", dest="net", required=True)
+                        metavar="FILE")
+    parser.add_argument("--net", dest="net")
     parser.add_argument("--output_name", dest="output_name", metavar="FILE",
                         required=True,
                         default='data')
-    parser.add_argument("--occurrences", dest="min_occurrences", required=False, type=int, default=0)
+    parser.add_argument("--occurrences", dest="min_occurrences", type=int, default=0)
+    parser.add_argument("--single_dataset", dest="single_dataset", type=bool, default=False)
     args = parser.parse_args()
 
     train_data_path_vec = args.train_data_path_vec
@@ -183,21 +184,26 @@ if __name__ == '__main__':
     test_data_path_var = args.test_data_path_var
     val_data_path_var = args.val_data_path_var
 
-    process_net(args.target_histogram_train_vec,
-                args.target_histogram_test_vec,
-                args.target_histogram_val_vec,
-                args.word_histogram_vec,
-                args.path_histogram_vec,
-                [test_data_path_vec, val_data_path_vec, train_data_path_vec],
-                ['test_vec', 'val_vec', 'train_vec'],
-                net_type="vec")
+    if not args.single_dataset:
+        if args.net == "code2vec":
+            process_net(args.target_histogram_train_vec,
+                        args.target_histogram_test_vec,
+                        args.target_histogram_val_vec,
+                        args.word_histogram_vec,
+                        args.path_histogram_vec,
+                        [test_data_path_vec, val_data_path_vec, train_data_path_vec],
+                        ['test_vec', 'val_vec', 'train_vec'],
+                        net_type="vec")
 
-    if args.net == "code2var":
-        process_net(args.target_histogram_train_var,
-                    args.target_histogram_test_var,
-                    args.target_histogram_val_var,
-                    args.word_histogram_var,
-                    args.path_histogram_var,
-                    [test_data_path_var, val_data_path_var, train_data_path_var],
-                    ['test_var', 'val_var', 'train_var'],
-                    net_type="var")
+        if args.net == "code2var":
+            process_net(args.target_histogram_train_var,
+                        args.target_histogram_test_var,
+                        args.target_histogram_val_var,
+                        args.word_histogram_var,
+                        args.path_histogram_var,
+                        [test_data_path_var, val_data_path_var, train_data_path_var],
+                        ['test_var', 'val_var', 'train_var'],
+                        net_type="var")
+    else:
+        if args.net == "code2var":
+            process_file(test_data_path_var, args.max_contexts, args.output_name)
