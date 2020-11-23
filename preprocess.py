@@ -8,7 +8,6 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from typing import Optional, List, Callable
 
-
 FreqDictLine = namedtuple("FreqDictLine", ["name", "frequency"])
 
 
@@ -34,8 +33,7 @@ def parse_vocab(path: str,
         # Move out of function as _default_filters = [...]
         # when "args" variable scope issues are addressed
         filters = [
-            lambda line: line.frequency > args.min_occurences,
-            lambda line: "|" not in line.name
+            lambda line: line.frequency > args.min_occurrences,
         ]
 
     with open(path, "r") as file:
@@ -115,9 +113,14 @@ def process_net(target_vocab_train: str,
         net_type (): vec or var
 
     """
-    target_freq_train = parse_vocab(target_vocab_train)
-    target_freq_test = parse_vocab(target_vocab_test)
-    target_freq_val = parse_vocab(target_vocab_val)
+    target_filters = [
+        lambda line: line.frequency > args.min_occurrences,
+        lambda line: "|" not in line.name,
+        lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"}
+    ]
+    target_freq_train = parse_vocab(target_vocab_train, filters=target_filters)
+    target_freq_test = parse_vocab(target_vocab_test, filters=target_filters)
+    target_freq_val = parse_vocab(target_vocab_val, filters=target_filters)
 
     if len(data_roles) != 3:
         raise ValueError(f"data_roles should consist of 3 elements, {len(data_roles)} given")

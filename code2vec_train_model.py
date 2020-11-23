@@ -177,10 +177,7 @@ if __name__ == "__main__":
                                                         monitor='accuracy',
                                                         verbose=1),
                      tf.keras.callbacks.TensorBoard(log_dir='./logs'),
-                     tf.keras.callbacks.EarlyStopping(monitor="loss",
-                                                      min_delta=0.01,
-                                                      mode="auto",
-                                                      ),
+
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
 

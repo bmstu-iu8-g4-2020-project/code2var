@@ -7,9 +7,13 @@ if [ $# -eq 0 ]
     echo "No dataset name provided"
     exit 1
 fi
+DATASET_NAME=$1
+
 if [ $# -eq 2 ]
   then
-    CHECKPOINTS_DIR_PARAM = --checkpoints_dir $2
+    CHECKPOINTS_DIR=$2
+    mkdir $2
+    ${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME --checkpoints_dir $CHECKPOINTS_DIR --net var --train true
+  else
+    ${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME --net var --train true
 fi
-DATASET_NAME=$1
-${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME $CHECKPOINTS_DIR_PARAM --net var --train true
