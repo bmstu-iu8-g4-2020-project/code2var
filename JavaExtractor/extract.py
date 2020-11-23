@@ -27,8 +27,10 @@ def ExtractFeaturesForDir(args, dir, prefix):
                "--max_path_length", str(args.max_path_length), "--max_path_width",
                str(args.max_path_width),
                "--dir", dir, "--num_threads", str(args.num_threads)]
+    suffix = ".vec.data.log"
     if args.only_vars:
         command += ["--variables"]
+        suffix = ".var.data.log"
     if args.obfuscate:
         command += ["--obfuscate"]
 
@@ -39,7 +41,7 @@ def ExtractFeaturesForDir(args, dir, prefix):
     outputFileName = TMP_DIR + prefix + dir.split("/")[-1]
     failed = False
     with open(outputFileName, "a") as outputFile:
-        with open(prefix + dir + ".data.log", 'a') as o:
+        with open(prefix + dir + suffix, 'a') as o:
             print(command)
             sp = subprocess.Popen(command, stdout=o, stderr=subprocess.PIPE)
 
