@@ -5,20 +5,16 @@ import random
 import config
 
 from argparse import ArgumentParser
-from typing import Optional, List
+from collections import namedtuple
+from typing import Optional, List, Callable
 
 
-def has_single_word(name: str):
-    """
-    Args:
-        name (): string that we need to check
-    Returns:
-        True if name has no | symbol, so it has only one word.
-    """
-    return "|" not in name
+FreqDictLine = namedtuple("FreqDictLine", ["name", "frequency"])
 
 
-def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None, filter_func=None):
+def parse_vocab(path: str,
+                limit: Optional[int] = None,
+                filters: Optional[List[Callable]] = None):
     """
         Parse histogram files containing target|token|path and their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
@@ -26,28 +22,31 @@ def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None, 
         Note that parsed file for token and path should be generated from functions with pre-limited targets to avoid
         redundant data in token and path freq_dicts.
     Args:
-        filter_func (): function used to filter inappropriate targets
         path (): string contains path to file with parsed pairs "word frequency"
-        min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
-                            to the dict
         limit (): optional hyper-parameter that should protect freq_dicts from being too big if minimal frequency is too low.
+        filters (): functions used to filter inappropriate targets
     Raises:
         ValueError if file opened from path is empty or doesn't content any matching required pair line.
     Returns:
         dict containing words in keys and their frequencies in values.
     """
+    if filters is None:
+        # Move out of function as _default_filters = [...]
+        # when "args" variable scope issues are addressed
+        filters = [
+            lambda line: line.frequency > args.min_occurences,
+            lambda line: "|" not in line.name
+        ]
 
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
-        word_to_freq = filter(lambda x: len(x) == 2 and
-                                        int(x[1]) > int(min_frequency) and
-                                        (filter_func is None or filter_func(x[0])),
-                              word_to_freq)
-        word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
+        word_to_freq = (FreqDictLine(line[0], int(line[1])) for line in word_to_freq if len(line) == 2)
+        word_to_freq = filter(lambda line: all(f(line) for f in filters), word_to_freq)
+        word_to_freq = sorted(word_to_freq, key=lambda line: line.frequency)
         word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
         return word_to_freq
-    raise ValueError("Empty or incorrect file given. Path: " + path)
+    raise ValueError(f"Empty or incorrect file given. Path: {path}")
 
 
 def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_freq_val, word_freq, output_filename):
@@ -61,7 +60,7 @@ def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_fre
         pickle.dump(target_freq_train, file)
         pickle.dump(target_freq_test, file)
         pickle.dump(target_freq_val, file)
-        print("Frequency dictionaries saved to: " + output_filename + ".c2v.dict")
+        print(f"Frequency dictionaries saved to: {output_filename}.c2v.dict")
 
 
 def process_file(file_path, max_contexts, out_file_path, target_freq):
@@ -89,8 +88,8 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))
                     output.write(f"{target} {' '.join(contexts)}{empty_filler}\n")
-    print("processed file + " + file_path)
-    print("generated file + " + out_file_path + ".csv")
+    print(f"processed {file_path}")
+    print(f"generated {out_file_path}.csv")
 
 
 def process_net(target_vocab_train: str,
@@ -116,9 +115,9 @@ def process_net(target_vocab_train: str,
         net_type (): vec or var
 
     """
-    target_freq_train = parse_vocab(target_vocab_train, min_frequency=args.min_occurrences, filter_func=has_single_word)
-    target_freq_test = parse_vocab(target_vocab_test, min_frequency=args.min_occurrences, filter_func=has_single_word)
-    target_freq_val = parse_vocab(target_vocab_val, min_frequency=args.min_occurrences, filter_func=has_single_word)
+    target_freq_train = parse_vocab(target_vocab_train)
+    target_freq_test = parse_vocab(target_vocab_test)
+    target_freq_val = parse_vocab(target_vocab_val)
 
     if len(data_roles) != 3:
         raise ValueError(f"data_roles should consist of 3 elements, {len(data_roles)} given")
