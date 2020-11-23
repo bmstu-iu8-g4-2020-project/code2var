@@ -8,7 +8,17 @@ from argparse import ArgumentParser
 from typing import Optional, List
 
 
-def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None):
+def has_single_word(name: str):
+    """
+    Args:
+        name (): string that we need to check
+    Returns:
+        True if name has no | symbol, so it has only one word.
+    """
+    return "|" not in name
+
+
+def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None, filter_func=None):
     """
         Parse histogram files containing target|token|path and their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
@@ -16,6 +26,7 @@ def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None):
         Note that parsed file for token and path should be generated from functions with pre-limited targets to avoid
         redundant data in token and path freq_dicts.
     Args:
+        filter_func (): function used to filter inappropriate targets
         path (): string contains path to file with parsed pairs "word frequency"
         min_frequency (): integer value, value of hyper-parameter limiting number of occurrences required to be included
                             to the dict
@@ -28,7 +39,10 @@ def parse_vocab(path: str, min_frequency: int = 1, limit: Optional[int] = None):
 
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)
-        word_to_freq = filter(lambda x: len(x) == 2 and int(x[1]) > int(min_frequency) and "|" not in x[0], word_to_freq)
+        word_to_freq = filter(lambda x: len(x) == 2 and
+                                        int(x[1]) > int(min_frequency) and
+                                        (filter_func is None or filter_func(x[0])),
+                              word_to_freq)
         word_to_freq = sorted(word_to_freq, key=lambda line: line[1])
         word_to_freq = dict(word_to_freq[:limit])
     if len(word_to_freq) != 0:
@@ -65,9 +79,10 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
     """
     with open(file_path, 'r') as file:
         with open(out_file_path + '.csv', 'w') as output:
-            for line in file:
+            for idx, line in enumerate(file):
                 contexts = line.rstrip('\n').split(" ")
-                assert len(contexts) > 0
+                if len(contexts) == 0:
+                    raise RuntimeError(f"One of lines in your file has wrong size. Line {idx}: {line}")
                 target, contexts = contexts[0], contexts[1:]
                 if target in target_freq:
                     if len(contexts) > max_contexts:
@@ -78,35 +93,37 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
     print("generated file + " + out_file_path + ".csv")
 
 
-def process_net(target_histogram_train: str,
-                target_histogram_test: str,
-                target_histogram_val: str,
-                word_histogram_path: str,
-                path_histogram_path: str,
+def process_net(target_vocab_train: str,
+                target_vocab_test: str,
+                target_vocab_val: str,
+                word_vocab_path: str,
+                path_vocab_path: str,
                 data_paths: List[str],
                 data_roles: List[str],
                 net_type: str):
     """
         Process target files for train, test and validation datasets,
-        generates token and path vocabs|histograms for training dataset.
+        generates token and path vocabs for training dataset.
     Args:
-        target_histogram_train (): path to file contains pairs (target, frequency) separated by space for train dataset
-        target_histogram_test (): path to file contains pairs (target, frequency) separated by space for test dataset
-        target_histogram_val (): path to file contains pairs (target, frequency) separated by space for validation dataset
-        word_histogram_path (): path to file where pairs (token, frequency) should be saved
-        path_histogram_path (): path to file where pairs (path, frequency) should be saved
+        target_vocab_train (): path to file contains pairs (target, frequency) separated by space for train dataset
+        target_vocab_test (): path to file contains pairs (target, frequency) separated by space for test dataset
+        target_vocab_val (): path to file contains pairs (target, frequency) separated by space for validation dataset
+        word_vocab_path (): path to file where pairs (token, frequency) should be saved
+        path_vocab_path (): path to file where pairs (path, frequency) should be saved
         data_paths (): list of paths to files containing extracted AST paths
         NOTE! data_paths should have length 3 for train, test and validation files
         data_roles (): list of names for data in data_path
         net_type (): vec or var
 
     """
-    target_freq_train = parse_vocab(target_histogram_train, min_frequency=args.min_occurrences)
-    target_freq_test = parse_vocab(target_histogram_test, min_frequency=args.min_occurrences)
-    target_freq_val = parse_vocab(target_histogram_val, min_frequency=args.min_occurrences)
+    target_freq_train = parse_vocab(target_vocab_train, min_frequency=args.min_occurrences, filter_func=has_single_word)
+    target_freq_test = parse_vocab(target_vocab_test, min_frequency=args.min_occurrences, filter_func=has_single_word)
+    target_freq_val = parse_vocab(target_vocab_val, min_frequency=args.min_occurrences, filter_func=has_single_word)
 
-    assert len(data_paths) == 3
-    assert len(data_roles) == 3
+    if len(data_roles) != 3:
+        raise ValueError(f"data_roles should consist of 3 elements, {len(data_roles)} given")
+    if len(data_paths) != 3:
+        raise ValueError(f"data_paths should consist of 3 elements, {len(data_paths)} given")
 
     for data_path, data_role in zip(data_paths, data_roles):
         process_file(file_path=data_path,
@@ -118,14 +135,14 @@ def process_net(target_histogram_train: str,
     # Splits csv file by space remove path and generate frequency for each line.
     # csv is split instead of .code2vec/var because we don't want redundant tokens from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name}.train_{net_type}.csv | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{word_histogram_path}")
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{word_vocab_path}")
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec/var because we don't want redundant paths from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name}.train_{net_type}.csv | tr ' ' '\n' | cut -d',' -f2 | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{path_histogram_path}")
-    path_freq = parse_vocab(path_histogram_path)
-    word_freq = parse_vocab(word_histogram_path)
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{path_vocab_path}")
+    path_freq = parse_vocab(path_vocab_path)
+    word_freq = parse_vocab(word_vocab_path)
 
     save_dictionaries(target_freq_train=target_freq_train, target_freq_test=target_freq_test,
                       target_freq_val=target_freq_val, path_freq=path_freq,
