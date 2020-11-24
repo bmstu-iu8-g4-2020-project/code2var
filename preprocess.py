@@ -1,7 +1,12 @@
 #!/usr/bin/python
+import fnmatch
 import os
 import pickle
 import random
+from enum import Enum
+
+import pandas as pd
+
 import config
 
 from argparse import ArgumentParser
@@ -11,11 +16,16 @@ from typing import Optional, List, Callable
 FreqDictLine = namedtuple("FreqDictLine", ["name", "frequency"])
 
 
+class NetType(Enum):
+    code2var = "var"
+    code2vec = "vec"
+
+
 def parse_vocab(path: str,
                 limit: Optional[int] = None,
                 filters: Optional[List[Callable]] = None):
     """
-        Parse histogram files containing target|token|path and their frequency pairs.
+        Parse histogram files containing target|token|path aёёnd their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
 
         Note that parsed file for token and path should be generated from functions with pre-limited targets to avoid
@@ -47,7 +57,7 @@ def parse_vocab(path: str,
     raise ValueError(f"Empty or incorrect file given. Path: {path}")
 
 
-def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_freq_val, word_freq, output_filename):
+def save_dictionaries(path_freq, target_freq_train, word_freq, output_filename):
     """
         Dumps generated word to frequency dictionaries to .c2v.dict file using pickle
     """
@@ -56,8 +66,6 @@ def save_dictionaries(path_freq, target_freq_train, target_freq_test, target_fre
         pickle.dump(word_freq, file)
         pickle.dump(path_freq, file)
         pickle.dump(target_freq_train, file)
-        pickle.dump(target_freq_test, file)
-        pickle.dump(target_freq_val, file)
         print(f"Frequency dictionaries saved to: {output_filename}.c2v.dict")
 
 
@@ -90,133 +98,119 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
     print(f"generated {out_file_path}.csv")
 
 
-def process_net(target_vocab_train: str,
-                target_vocab_test: str,
-                target_vocab_val: str,
-                word_vocab_path: str,
-                path_vocab_path: str,
-                data_paths: List[str],
-                data_roles: List[str],
-                net_type: str):
+def _find(pattern, path):
+    result = []
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            if fnmatch.fnmatch(name, pattern):
+                result.append(os.path.join(root, name))
+    return result
+
+
+def create_target_vocab(data_files: List[str], output_name: str, net_type: NetType):
+    df = []
+    for file_path in data_files:
+        df.append(pd.read_csv(file_path, sep=" ", usecols=[0], names=["Target"], header=None))
+        df[-1]["Frequency"] = 1
+        df[-1] = df[-1].groupby("Target").sum().reset_index()
+        df[-1]["Folders"] = 1
+    vocab = pd.concat(df)
+    vocab = vocab.groupby(["Target"]).sum().reset_index()
+    vocab = vocab.query('Folders > 1')
+    with open(output_name, "w") as file:
+        for target, freq in zip(vocab["Target"], vocab["Frequency"]):
+            file.write(f"{target} {freq}\n")
+
+
+def process_net(data_dir_path: str, combined_data_path: str,output_name: str, net_type: NetType):
     """
         Process target files for train, test and validation datasets,
         generates token and path vocabs for training dataset.
     Args:
-        target_vocab_train (): path to file contains pairs (target, frequency) separated by space for train dataset
-        target_vocab_test (): path to file contains pairs (target, frequency) separated by space for test dataset
-        target_vocab_val (): path to file contains pairs (target, frequency) separated by space for validation dataset
-        word_vocab_path (): path to file where pairs (token, frequency) should be saved
-        path_vocab_path (): path to file where pairs (path, frequency) should be saved
-        data_paths (): list of paths to files containing extracted AST paths
-        NOTE! data_paths should have length 3 for train, test and validation files
-        data_roles (): list of names for data in data_path
-        net_type (): vec or var
+
+        data_dir_path (): path to folder where all .data.log files is stored.
+        output_name (): the template filename that will be used to save the generated files.
+        net_type (): vec or var.
 
     """
     target_filters = [
-        lambda line: line.frequency > args.min_occurrences,
-        lambda line: "|" not in line.name,
+        lambda line: line.frequency > min_occurrences,
+        # lambda line: "|" not in line.name,
         lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"}
     ]
-    target_freq_train = parse_vocab(target_vocab_train, filters=target_filters)
-    target_freq_test = parse_vocab(target_vocab_test, filters=target_filters)
-    target_freq_val = parse_vocab(target_vocab_val, filters=target_filters)
 
-    if len(data_roles) != 3:
-        raise ValueError(f"data_roles should consist of 3 elements, {len(data_roles)} given")
-    if len(data_paths) != 3:
-        raise ValueError(f"data_paths should consist of 3 elements, {len(data_paths)} given")
+    data_files = _find(f"*.{net_type.value}.data.log", data_dir_path)
+    if len(data_files) == 0:
+        raise RuntimeError(f"Given folder has no files with .{net_type.value}.data.log file extension.")
 
-    for data_path, data_role in zip(data_paths, data_roles):
-        process_file(file_path=data_path,
-                     max_contexts=args.max_contexts,
-                     target_freq=target_freq_train,
-                     out_file_path=f"{args.output_name}.{data_role}")
+    target_vocab_path = f"{output_name}.{net_type.value}.target.vocab"
+    token_vocab_path = f"{output_name}.{net_type.value}.token.vocab"
+    path_vocab_path = f"{output_name}.{net_type.value}.path.vocab"
+    create_target_vocab(data_files, target_vocab_path, net_type)
+
+    target_freq = parse_vocab(target_vocab_path, filters=target_filters)
+
+    process_file(file_path=combined_data_path,
+                 max_contexts=args.max_contexts,
+                 target_freq=target_freq,
+                 out_file_path=f"{args.output_name}.{net_type.value}")
 
     # Generate token - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove path and generate frequency for each line.
     # csv is split instead of .code2vec/var because we don't want redundant tokens from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name}.train_{net_type}.csv | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{word_vocab_path}")
+    os.system(f"cut -d' ' -f2- < {args.output_name}.{net_type.value}.csv | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | "
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + token_vocab_path)
     # Generate path - frequency file to future parsing in parse_vocab.
     # Splits csv file by space remove tokens and generate frequency for each line.
     # csv is split instead of .code2vec/var because we don't want redundant paths from not filtered functions to be included.
-    os.system(f"cut -d' ' -f2- < {args.output_name}.train_{net_type}.csv | tr ' ' '\n' | cut -d',' -f2 | "
-              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + f"{path_vocab_path}")
+    os.system(f"cut -d' ' -f2- < {args.output_name}.{net_type.value}.csv | tr ' ' '\n' | cut -d',' -f2 | "
+              "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + path_vocab_path)
     path_freq = parse_vocab(path_vocab_path)
-    word_freq = parse_vocab(word_vocab_path)
+    word_freq = parse_vocab(token_vocab_path)
 
-    save_dictionaries(target_freq_train=target_freq_train, target_freq_test=target_freq_test,
-                      target_freq_val=target_freq_val, path_freq=path_freq,
+    save_dictionaries(target_freq_train=target_freq, path_freq=path_freq,
                       word_freq=word_freq,
-                      output_filename=f"{args.output_name}.{net_type}")
+                      output_filename=f"{args.output_name}.{net_type.value}")
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("--train_data_vec", dest="train_data_path_vec",
+    parser.add_argument("--data_dir",
+                        dest="data_dir",
+                        help="path to directory containing extracted path in .data.log files",
                         required=True)
-    parser.add_argument("--test_data_vec", dest="test_data_path_vec",
+    parser.add_argument("--combined_file",
+                        dest="combined_file",
+                        help="path to concatenation of all .data.log file",
                         required=True)
-    parser.add_argument("--val_data_vec", dest="val_data_path_vec",
+    parser.add_argument("--max_contexts",
+                        dest="max_contexts",
+                        type=int,
+                        default=200,
+                        required=False)
+    parser.add_argument("--net",
+                        dest="net",
+                        help="var or vec for code2var or code2vec",
                         required=True)
-    parser.add_argument("--train_data_var", dest="train_data_path_var",
-                        required=False)
-    parser.add_argument("--test_data_var", dest="test_data_path_var",
-                        required=False)
-    parser.add_argument("--val_data_var", dest="val_data_path_var",
-                        required=False)
-    parser.add_argument("--max_contexts", dest="max_contexts", type=int,
-                        default=200, required=False)
-    parser.add_argument("--word_histogram_vec", dest="word_histogram_vec",
-                        metavar="FILE", required=True)
-    parser.add_argument("--path_histogram_vec", dest="path_histogram_vec",
-                        metavar="FILE", required=True)
-    parser.add_argument("--target_histogram_train", dest="target_histogram_train_vec",
-                        metavar="FILE", required=True)
-    parser.add_argument("--target_histogram_test", dest="target_histogram_test_vec",
-                        metavar="FILE", required=True)
-    parser.add_argument("--target_histogram_val", dest="target_histogram_val_vec",
-                        metavar="FILE", required=True)
-    parser.add_argument("--word_histogram_var", dest="word_histogram_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--path_histogram_var", dest="path_histogram_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--target_histogram_train_var", dest="target_histogram_train_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--target_histogram_test_var", dest="target_histogram_test_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--target_histogram_val_var", dest="target_histogram_val_var",
-                        metavar="FILE", required=False)
-    parser.add_argument("--net", dest="net", required=True)
-    parser.add_argument("--output_name", dest="output_name", metavar="FILE",
+    parser.add_argument("--occurrences",
+                        dest="min_occurrences",
+                        required=False,
+                        type=int,
+                        default=0)
+    parser.add_argument("--min_folders",
+                        dest="min_folders",
+                        help="Minimal folders number for target to be found for passing filter.",
+                        type=int,
+                        default=0)
+    parser.add_argument("--output_name",
+                        dest="output_name",
+                        metavar="FILE",
                         required=True,
                         default='data')
-    parser.add_argument("--occurrences", dest="min_occurrences", required=False, type=int, default=0)
     args = parser.parse_args()
 
-    train_data_path_vec = args.train_data_path_vec
-    test_data_path_vec = args.test_data_path_vec
-    val_data_path_vec = args.val_data_path_vec
-    train_data_path_var = args.train_data_path_var
-    test_data_path_var = args.test_data_path_var
-    val_data_path_var = args.val_data_path_var
+    net: NetType = NetType(args.net)
+    min_occurrences = args.min_occurrences
+    min_folders = args.min_folders
 
-    process_net(args.target_histogram_train_vec,
-                args.target_histogram_test_vec,
-                args.target_histogram_val_vec,
-                args.word_histogram_vec,
-                args.path_histogram_vec,
-                [test_data_path_vec, val_data_path_vec, train_data_path_vec],
-                ['test_vec', 'val_vec', 'train_vec'],
-                net_type="vec")
-
-    if args.net == "code2var":
-        process_net(args.target_histogram_train_var,
-                    args.target_histogram_test_var,
-                    args.target_histogram_val_var,
-                    args.word_histogram_var,
-                    args.path_histogram_var,
-                    [test_data_path_var, val_data_path_var, train_data_path_var],
-                    ['test_var', 'val_var', 'train_var'],
-                    net_type="var")
+    process_net(args.data_dir, args.combined_file, args.output_name, net_type=net)

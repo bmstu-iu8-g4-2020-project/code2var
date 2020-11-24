@@ -92,27 +92,10 @@ echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
   --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}var_processing.log
 
-#find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
+find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
 #find ${TRAIN_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
-
-echo "Processing test files from "${TEST_FILES_DIR}
-${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${TEST_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${TEST_FILES_DIR}var_processing.log
-
-#find ${TEST_FILES_DIR} -name '*.data.log' -exec cat {} > ${TEST_PATH_VAR} \;
-#find ${TEST_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
-echo "Done. Generated ${TEST_PATH_VAR}"
-
-echo "Processing train files from "${VALIDATION_FILES_DIR}
-${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir ${VALIDATION_FILES_DIR} --only_for_vars true --obfuscate ${OBFUSCATING} 2>&1 | tee ${VALIDATION_FILES_DIR}var_processing.log
-
-#find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec cat {} > ${VALIDATION_PATH_VAR} \;
-#find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
-
-echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 #
 ## Generate vocabularies for code2vec
@@ -131,15 +114,8 @@ echo "Done. Generated ${VALIDATION_PATH_VAR}"
 #
 ## Preprocess for code2vec
 #
-#chmod +x preprocess.py
+chmod +x preprocess.py
 #
-#${PYTHON} preprocess.py --train_data_vec ${TRAIN_PATH_VEC} --test_data_vec ${TEST_PATH_VEC} \
-#  --val_data_vec ${VALIDATION_PATH_VEC} --train_data_var ${TRAIN_PATH_VAR} --test_data_var ${TEST_PATH_VAR} \
-#  --val_data_var ${VALIDATION_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
-#  --target_histogram_train ${FUNCTIONS_VOCABULARY_TRAIN} --target_histogram_test ${FUNCTIONS_VOCABULARY_TEST} \
-#  --target_histogram_val ${FUNCTIONS_VOCABULARY_VAL}  --word_histogram_vec ${LEAVES_VOCABULARY_VEC} \
-#  --path_histogram_vec ${PATH_VOCABULARY_VEC} --target_histogram_train_var ${VARIABLES_VOCABULARY_TRAIN} \
-#  --target_histogram_test_var ${VARIABLES_VOCABULARY_TEST} --target_histogram_val_var ${VARIABLES_VOCABULARY_VAL} \
-#  --word_histogram_var ${LEAVES_VOCABULARY_VAR} --path_histogram_var ${PATH_VOCABULARY_VAR} \
-#  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2var
-#
+${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var
+
