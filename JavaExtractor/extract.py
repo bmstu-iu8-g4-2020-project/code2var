@@ -56,7 +56,7 @@ def ExtractFeaturesForDirsList(args, dirs):
         shutil.rmtree(TMP_DIR, ignore_errors=True)
     os.makedirs(TMP_DIR)
     try:
-        p = multiprocessing.Pool(4)
+        p = multiprocessing.Pool(1)
         p.starmap(ParallelExtractDir, zip(itertools.repeat(args), list(dirs)))
         output_files = os.listdir(TMP_DIR)
         for f in output_files:

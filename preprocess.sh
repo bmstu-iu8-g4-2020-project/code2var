@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+
 DATASET_NAME=java-small
 
 TRAIN_FILES_DIR=dataset/${DATASET_NAME}/training/
@@ -38,9 +39,19 @@ TEST_PATH_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.test.paths.code2var
 VALIDATION_PATH_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.validation.paths.code2var
 
 
-FUNCTIONS_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.functions.vocab
-LEAVES_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.leaves.vocab
-PATH_VOCABULARY=dataset/${DATASET_NAME}/${DATASET_NAME}.train.path.vocab
+FUNCTIONS_VOCABULARY_TRAIN=dataset/${DATASET_NAME}/${DATASET_NAME}.train.functions.vocab
+FUNCTIONS_VOCABULARY_TEST=dataset/${DATASET_NAME}/${DATASET_NAME}.test.functions.vocab
+FUNCTIONS_VOCABULARY_VAL=dataset/${DATASET_NAME}/${DATASET_NAME}.validation.functions.vocab
+
+LEAVES_VOCABULARY_VEC=dataset/${DATASET_NAME}/${DATASET_NAME}.train.leaves.vocab
+PATH_VOCABULARY_VEC=dataset/${DATASET_NAME}/${DATASET_NAME}.train.path.vocab
+
+VARIABLES_VOCABULARY_TRAIN=dataset/${DATASET_NAME}/${DATASET_NAME}.train.variables.vocab
+VARIABLES_VOCABULARY_TEST=dataset/${DATASET_NAME}/${DATASET_NAME}.test.variables.vocab
+VARIABLES_VOCABULARY_VAL=dataset/${DATASET_NAME}/${DATASET_NAME}.validation.variables.vocab
+LEAVES_VOCABULARY_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.var.train.leaves.vocab
+PATH_VOCABULARY_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.var.train.path.vocab
+
 # Script
 
 mkdir -p dataset
@@ -103,14 +114,19 @@ find ${VALIDATION_FILES_DIR} -name '*.data.log' -exec rm -rf {} \;
 echo "Done. Generated ${VALIDATION_PATH_VAR}"
 
 
-# Generate vocabularies for train code2vec
+# Generate vocabularies for code2vec
 
-echo "Generating target histogram from ${TRAIN_PATH_VEC}"
-cut -d ' ' -f1 < ${TRAIN_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY}
-cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | \
-awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${LEAVES_VOCABULARY}
-cut -d' ' -f2- < ${TRAIN_PATH_VEC} | tr ' ' '\n' | cut -d',' -f2 | \
-awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${PATH_VOCABULARY}
+echo "Generating vocabularies from ${TRAIN_PATH_VEC}"
+cut -d ' ' -f1 < ${TRAIN_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY_TRAIN}
+cut -d ' ' -f1 < ${TEST_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY_TEST}
+cut -d ' ' -f1 < ${VALIDATION_PATH_VEC} | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${FUNCTIONS_VOCABULARY_VAL}
+
+# Generate vocabularies for code2vec
+echo "Generating target histogram from ${TRAIN_PATH_VAR}"
+cut -d ' ' -f1 < $TRAIN_PATH_VAR | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > $VARIABLES_VOCABULARY_TRAIN
+cut -d ' ' -f1 < $TEST_PATH_VAR | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > $VARIABLES_VOCABULARY_TEST
+cut -d ' ' -f1 < $VALIDATION_PATH_VAR | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > $VARIABLES_VOCABULARY_VAL
+
 
 # Preprocess for code2vec
 
@@ -118,12 +134,11 @@ chmod +x preprocess.py
 
 ${PYTHON} preprocess.py --train_data_vec ${TRAIN_PATH_VEC} --test_data_vec ${TEST_PATH_VEC} \
   --val_data_vec ${VALIDATION_PATH_VEC} --train_data_var ${TRAIN_PATH_VAR} --test_data_var ${TEST_PATH_VAR} \
-  --val_data_var ${VALIDATION_PATH_VAR}   --max_contexts ${MAX_CONTEXTS} \
-  --word_vocab_size ${WORD_VOCABULARY_SIZE} --path_vocab_size ${PATH_VOCABULARY_SIZE} \
-  --target_vocab_size ${TARGET_VOCABULARY_SIZE} --target_histogram ${FUNCTIONS_VOCABULARY} \
-  --word_histogram ${LEAVES_VOCABULARY} --path_histogram ${PATH_VOCABULARY} \
-  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2vec
-
-# Preprocess for code2var
-
+  --val_data_var ${VALIDATION_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
+  --target_histogram_train ${FUNCTIONS_VOCABULARY_TRAIN} --target_histogram_test ${FUNCTIONS_VOCABULARY_TEST} \
+  --target_histogram_val ${FUNCTIONS_VOCABULARY_VAL}  --word_histogram_vec ${LEAVES_VOCABULARY_VEC} \
+  --path_histogram_vec ${PATH_VOCABULARY_VEC} --target_histogram_train_var ${VARIABLES_VOCABULARY_TRAIN} \
+  --target_histogram_test_var ${VARIABLES_VOCABULARY_TEST} --target_histogram_val_var ${VARIABLES_VOCABULARY_VAL} \
+  --word_histogram_var ${LEAVES_VOCABULARY_VAR} --path_histogram_var ${PATH_VOCABULARY_VAR} \
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net code2var
 
