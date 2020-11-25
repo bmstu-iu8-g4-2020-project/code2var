@@ -116,7 +116,7 @@ def create_target_vocab(data_files: List[str], output_name: str, net_type: NetTy
         df[-1]["Folders"] = 1
     vocab = pd.concat(df)
     vocab = vocab.groupby(["Target"]).sum().reset_index()
-    vocab = vocab.query('Folders > 1')
+    vocab = vocab.query('Folders > 0')
     with open(output_name, "w") as file:
         for target, freq in zip(vocab["Target"], vocab["Frequency"]):
             file.write(f"{target} {freq}\n")

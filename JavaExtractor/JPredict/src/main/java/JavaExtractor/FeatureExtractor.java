@@ -112,7 +112,7 @@ public class FeatureExtractor {
   private ProgramFeatures generatePathFeaturesForFunction(MethodContent methodContent) {
     ArrayList<Node> functionLeaves = methodContent.getLeaves();
     ProgramFeatures programFeatures =
-        new ProgramFeatures(methodContent.getName(), m_CommandLineValues);
+        new ProgramFeatures(methodContent.getName(), m_CommandLineValues, methodContent.getMethodName());
 
     for (int i = 0; i < functionLeaves.size(); i++) {
       for (int j = i + 1; j < functionLeaves.size(); j++) {
@@ -122,7 +122,7 @@ public class FeatureExtractor {
         if (path != Common.EmptyString) {
           Property source = functionLeaves.get(i).getUserData(Common.PropertyKey);
           Property target = functionLeaves.get(j).getUserData(Common.PropertyKey);
-          programFeatures.addFeature(source, path, target);
+          programFeatures.addFeature(source.getName(), path, target.getName());
         }
       }
     }
@@ -142,7 +142,7 @@ public class FeatureExtractor {
     for (Node varNode : variableLeaves) {
       String varName = ((VariableDeclaratorId) varNode).getName();
 
-      ProgramFeatures varFeatures = new ProgramFeatures(varName, m_CommandLineValues);
+      ProgramFeatures varFeatures = new ProgramFeatures(varName, m_CommandLineValues, methodContent.getMethodName());
       for (int i = 0; i < functionLeaves.size(); i++) {
         for (int j = i + 1; j < functionLeaves.size(); j++) {
           String separator = Common.EmptyString;
@@ -150,9 +150,9 @@ public class FeatureExtractor {
               || varName.equals(functionLeaves.get(j).toString())) {
             String path = generatePath(functionLeaves.get(i), functionLeaves.get(j), separator);
             if (path != Common.EmptyString) {
-              Property source = functionLeaves.get(i).getUserData(Common.PropertyKey);
-              Property target = functionLeaves.get(j).getUserData(Common.PropertyKey);
-              varFeatures.addFeature(source, path, target);
+              Node source = functionLeaves.get(i);
+              Node target = functionLeaves.get(j);
+              varFeatures.addFeature(source.toString(), path, target.toString());
             }
           }
         }

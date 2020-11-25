@@ -35,7 +35,7 @@ public class FunctionVisitor extends VoidVisitorAdapter<Object> {
 
     if (node.getBody() != null) {
       m_Methods.add(
-          new MethodContent(leaves, splitName, getMethodLength(node.getBody().toString())));
+          new MethodContent(leaves, splitName, getMethodLength(node.getBody().toString()), node.getName()));
     }
   }
 
