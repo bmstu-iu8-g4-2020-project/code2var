@@ -25,13 +25,14 @@ import java.util.stream.IntStream;
 
 public class ExtractFeaturesTask implements Runnable {
   private static final int MAX_VAR_NUMBERS = 25;
+  private static final Integer MAX_FUNC_NUMBERS = 100;
   CommandLineValues m_CommandLineValues;
   Path filePath;
   String code;
 
   HashMap<String, HashMap<String, String>> obfuscatedNames;
-  ArrayList<Integer> freeVariables;
-  Integer freeVariablesNumber;
+  ArrayList<Integer> freeIndexes;
+  Integer freeIndexesNumber;
 
   public ExtractFeaturesTask(CommandLineValues commandLineValues, Path path) {
     m_CommandLineValues = commandLineValues;
@@ -81,11 +82,12 @@ public class ExtractFeaturesTask implements Runnable {
     try {
       for (Object oMethod : newClass.getMethods()) {
         CtMethod method = (CtMethod) oMethod;
-        freeVariables =
+        List<CtElement> el = method.getElements(ctElement -> true);
+        freeIndexes =
             (ArrayList<Integer>)
                 IntStream.rangeClosed(0, MAX_VAR_NUMBERS - 1).boxed().collect(Collectors.toList());
-        freeVariablesNumber = MAX_VAR_NUMBERS;
-        List<CtElement> el = method.getElements(ctElement -> true);
+        freeIndexesNumber = MAX_VAR_NUMBERS;
+
         method
             .getElements(
                 element ->
@@ -106,15 +108,17 @@ public class ExtractFeaturesTask implements Runnable {
                   obfuscateVariable(method, var);
                 });
 
+        freeIndexes =
+            (ArrayList<Integer>)
+                IntStream.rangeClosed(0, MAX_FUNC_NUMBERS - 1).boxed().collect(Collectors.toList());
+        freeIndexesNumber = MAX_FUNC_NUMBERS;
+
         method
-            .getElements(
-                element ->
-                    element.getClass()
-                        == spoon.support.reflect.reference.CtExecutableReferenceImpl.class)
+            .getElements(element -> element.getClass() == CtExecutableReferenceImpl.class)
             .forEach(
                 function -> {
                   CtExecutableReferenceImpl func = (CtExecutableReferenceImpl) function;
-                  func.setSimpleName("FUNC");
+                  obfuscateExecutableReference(method, func);
                 });
         method
             .getElements(
@@ -122,10 +126,9 @@ public class ExtractFeaturesTask implements Runnable {
             .forEach(
                 element -> {
                   CtLiteral literal = (CtLiteral) element;
-                  if (literal.getValue() == null ){
+                  if (literal.getValue() == null) {
                     literal.setValue("NULL");
-                  }
-                  else if (!(literal.getValue().equals(1)
+                  } else if (!(literal.getValue().equals(1)
                       || literal.getValue().equals(0)
                       || literal.getValue().equals(Integer.MAX_VALUE)
                       || literal.getValue().equals(Float.NaN)
@@ -147,28 +150,43 @@ public class ExtractFeaturesTask implements Runnable {
     }
   }
 
+  private void obfuscateExecutableReference(CtMethod method, CtExecutableReferenceImpl func) {
+    if (func == null) {
+      return;
+    }
+
+    if (!obfuscatedNames.containsKey(method.getSimpleName())) {
+      obfuscatedNames.put(method.getSimpleName(), new HashMap<>());
+    }
+
+    String newName = generateName("FUNC_");
+    obfuscatedNames.get(method.getSimpleName()).put(newName, func.getSimpleName());
+    func.setSimpleName(newName);
+  }
+
   private void obfuscateVariable(CtMethod method, CtVariable var) {
     if (var == null || var.getType() == null) {
       return;
     }
-    String newName = generateName();
     if (!obfuscatedNames.containsKey(method.getSimpleName())) {
       obfuscatedNames.put(method.getSimpleName(), new HashMap<>());
     }
+
+    String newName = generateName("VARIABLE_");
     obfuscatedNames.get(method.getSimpleName()).put(newName, var.getSimpleName());
     new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
   }
 
-  private String generateName() {
-    if (freeVariablesNumber == 0) {
-      throw new RuntimeException("Too many variables.");
+  private String generateName(String prefix) {
+    if (freeIndexesNumber == 0) {
+      throw new RuntimeException("Too many different objects for prefix." + prefix);
     }
     StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append("VARIABLE_");
-    int varIdx = (int) (Math.random() * freeVariablesNumber);
-    stringBuilder.append(freeVariables.get(varIdx));
-    freeVariables.remove(varIdx);
-    freeVariablesNumber--;
+    stringBuilder.append(prefix);
+    int varIdx = (int) (Math.random() * freeIndexesNumber);
+    stringBuilder.append(freeIndexes.get(varIdx));
+    freeIndexes.remove(varIdx);
+    freeIndexesNumber--;
     return stringBuilder.toString();
   }
 
