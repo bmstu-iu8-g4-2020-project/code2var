@@ -43,7 +43,7 @@ def parse_vocab(path: str,
         # Move out of function as _default_filters = [...]
         # when "args" variable scope issues are addressed
         filters = [
-            lambda line: line.frequency > args.min_occurrences,
+            lambda line: line.frequency > 50,
         ]
 
     with open(path, "r") as file:
@@ -116,13 +116,13 @@ def create_target_vocab(data_files: List[str], output_name: str, net_type: NetTy
         df[-1]["Folders"] = 1
     vocab = pd.concat(df)
     vocab = vocab.groupby(["Target"]).sum().reset_index()
-    vocab = vocab.query('Folders > 0')
+    vocab = vocab.query('Folders > 1')
     with open(output_name, "w") as file:
         for target, freq in zip(vocab["Target"], vocab["Frequency"]):
             file.write(f"{target} {freq}\n")
 
 
-def process_net(data_dir_path: str, combined_data_path: str,output_name: str, net_type: NetType):
+def process_net(data_dir_path: str, combined_data_path: str, output_name: str, net_type: NetType):
     """
         Process target files for train, test and validation datasets,
         generates token and path vocabs for training dataset.
@@ -136,7 +136,8 @@ def process_net(data_dir_path: str, combined_data_path: str,output_name: str, ne
     target_filters = [
         lambda line: line.frequency > min_occurrences,
         # lambda line: "|" not in line.name,
-        lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"}
+        lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"},
+        lambda line: line.name not in {"element", "object"},
     ]
 
     data_files = _find(f"*.{net_type.value}.data.log", data_dir_path)
@@ -165,7 +166,7 @@ def process_net(data_dir_path: str, combined_data_path: str,output_name: str, ne
     # csv is split instead of .code2vec/var because we don't want redundant paths from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name}.{net_type.value}.csv | tr ' ' '\n' | cut -d',' -f2 | "
               "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + path_vocab_path)
-    path_freq = parse_vocab(path_vocab_path)
+    path_freq = parse_vocab(path_vocab_path, config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT, filters=[lambda _: True])
     word_freq = parse_vocab(token_vocab_path)
 
     save_dictionaries(target_freq_train=target_freq, path_freq=path_freq,

@@ -117,5 +117,5 @@ echo "Done. Generated ${TRAIN_PATH_VAR}"
 chmod +x preprocess.py
 #
 ${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
-  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var --occurrences 50
 

@@ -81,9 +81,9 @@ class code2vec(tf.keras.Model):
             code_vectors = tf.keras.layers.Multiply()([batched_embed, attention_weights])
             code_vectors = tf.keras.backend.squeeze(code_vectors, axis=1)
             code_vectors = tf.keras.backend.sum(code_vectors, axis=1)
+            dropped_code_vectors = tf.keras.layers.Dropout(self.dropout_rate)(code_vectors)
             possible_targets = tf.keras.layers.Dense(self.target_vocab_size, activation="softmax",
-                                                     name="possible_targets")(
-                code_vectors)
+                                                     name="possible_targets")(dropped_code_vectors)
 
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.c2v.dict"
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.train_{args.net}.csv")
+                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
         dataset = pcr.get_dataset()
         # init lookups
 
@@ -181,8 +181,4 @@ if __name__ == "__main__":
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
 
-        val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                    csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.test_{args.net}.csv")  # Now it is normal that accuracy arround 0.
-        val_dataset = val_pcr.get_dataset()
-
-        model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks)
