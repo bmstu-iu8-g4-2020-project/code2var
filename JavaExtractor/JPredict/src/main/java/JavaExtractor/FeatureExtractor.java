@@ -11,6 +11,7 @@ import com.github.javaparser.ParseException;
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
 
 import java.io.IOException;
@@ -52,7 +53,6 @@ public class FeatureExtractor {
       throws ParseException, IOException {
     CompilationUnit compilationUnit = parseFileWithRetries(code);
     FunctionVisitor functionVisitor = new FunctionVisitor();
-
     functionVisitor.visit(compilationUnit, null);
 
     ArrayList<MethodContent> methods = functionVisitor.getMethodContents();

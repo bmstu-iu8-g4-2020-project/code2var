@@ -45,7 +45,7 @@ public class CommandLineValues {
   public boolean Obfuscate = false;
 
   @Option(name = "--timeout")
-  public int Timeout = 6000000;
+  public int Timeout = 60;
 
   public CommandLineValues(String... args) throws CmdLineException {
     CmdLineParser parser = new CmdLineParser(this);
