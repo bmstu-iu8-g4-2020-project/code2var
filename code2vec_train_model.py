@@ -32,16 +32,18 @@ class code2vec(tf.keras.Model):
                  target_vocab_size,
                  path_vocab_size,
                  max_contexts=config.config.MAX_CONTEXTS,
-                 embed_dim=config.config.EMBED_DIMENSION,
+                 token_embed_dim=config.config.TOKEN_EMBED_DIMENSION,
+                 path_embed_dim=config.config.PATH_EMBED_DIMENSION,
                  dropout_keep_rate=config.config.DROPOUT_KEEP_RATE):
         super(code2vec, self).__init__()
         self.max_contexts: int = max_contexts
         self.token_vocab_size: int = token_vocab_size
         self.target_vocab_size: int = target_vocab_size
         self.path_vocab_size: int = path_vocab_size
-        self.embed_dim: int = embed_dim
+        self.token_embed_dim: int = token_embed_dim
+        self.path_embed_dim: int = path_embed_dim
         self.dropout_rate: float = 1 - dropout_keep_rate
-        self.code_embed_dim: int = 3 * self.embed_dim  # 2*leaves_embed_dim + path_embed_dim
+        self.code_embed_dim: int = 2 * self.token_embed_dim + self.path_embed_dim
         self.history = None
         self.model = None  # TODO (RKulagin): look at tf github and check, how they store models
         self.vector_model = None
@@ -51,7 +53,7 @@ class code2vec(tf.keras.Model):
             input_source_token_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_source_token")
             input_target_token_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_target_token")
             token_embed = GPUEmbedding(input_dim=self.token_vocab_size,
-                                       output_dim=self.embed_dim,
+                                       output_dim=self.token_embed_dim,
                                        embeddings_initializer='uniform',
                                        dtype=tf.float32,
                                        name="token_embed")
@@ -59,7 +61,7 @@ class code2vec(tf.keras.Model):
             token_target_embed_model = tf.keras.Sequential([input_target_token_embed, token_embed])
             input_paths_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_paths")
             paths_embed = GPUEmbedding(input_dim=self.path_vocab_size,
-                                       output_dim=self.embed_dim,
+                                       output_dim=self.path_embed_dim,
                                        dtype=tf.float32,
                                        embeddings_initializer='uniform',
                                        name="paths_embed")

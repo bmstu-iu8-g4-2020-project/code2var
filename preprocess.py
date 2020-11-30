@@ -137,7 +137,7 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
         lambda line: line.frequency > min_occurrences,
         # lambda line: "|" not in line.name,
         lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"},
-        lambda line: line.name not in {"element", "object"},
+        lambda line: line.name not in {"element", "object", "variable", "var"},
     ]
 
     data_files = _find(f"*.{net_type.value}.data.log", data_dir_path)
