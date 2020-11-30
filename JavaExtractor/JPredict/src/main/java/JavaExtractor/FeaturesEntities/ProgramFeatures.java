@@ -46,6 +46,13 @@ public class ProgramFeatures {
     if (target.equals(this.methodName)){
       target = Common.methodName;
     }
+    if (m_CommandLineValues.OnlyVars && source.startsWith("VAR_")){
+      source = "VAR";
+    }
+    if (m_CommandLineValues.OnlyVars && target.startsWith("VAR_")){
+      target = "VAR";
+    }
+
     ProgramRelation newRelation = new ProgramRelation(source, target, path);
     features.add(newRelation);
   }

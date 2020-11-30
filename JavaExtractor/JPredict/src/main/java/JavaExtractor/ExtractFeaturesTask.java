@@ -13,6 +13,7 @@ import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
 import spoon.reflect.reference.CtPackageReference;
 import spoon.support.compiler.VirtualFile;
+import spoon.support.reflect.declaration.CtMethodImpl;
 import spoon.support.reflect.reference.CtExecutableReferenceImpl;
 import spoon.support.reflect.reference.CtFieldReferenceImpl;
 import spoon.support.reflect.reference.CtTypeReferenceImpl;
@@ -107,7 +108,9 @@ public class ExtractFeaturesTask implements Runnable {
           method
               .getElements(
                   element ->
-                      element.getClass() == spoon.support.reflect.code.CtLocalVariableImpl.class)
+                      element.getClass() == spoon.support.reflect.code.CtLocalVariableImpl.class
+                          || element.getClass()
+                              == spoon.support.reflect.code.CtCatchVariableImpl.class)
               .forEach(
                   variable -> {
                     CtVariable var = (CtVariable) variable;
@@ -139,8 +142,18 @@ public class ExtractFeaturesTask implements Runnable {
               .forEach(
                   function -> {
                     CtExecutableReferenceImpl func = (CtExecutableReferenceImpl) function;
-                    obfuscateExecutableReference(method, func);
+                    func.setSimpleName("FUNC");
                   });
+          method
+              .getElements(element -> element.getClass() == CtMethodImpl.class)
+              .forEach(
+                  function -> {
+                    CtMethodImpl func = (CtMethodImpl) function;
+                    if (func != method) {
+                      func.setSimpleName("FUNC");
+                    }
+                  });
+
           method
               .getElements(
                   element -> element.getClass() == spoon.support.reflect.code.CtLiteralImpl.class)
@@ -187,20 +200,6 @@ public class ExtractFeaturesTask implements Runnable {
     }
   }
 
-  private void obfuscateExecutableReference(CtMethod method, CtExecutableReferenceImpl func) {
-    if (func == null) {
-      return;
-    }
-
-    if (!obfuscatedNames.containsKey(method.getSimpleName())) {
-      obfuscatedNames.put(method.getSimpleName(), new HashMap<>());
-    }
-
-    String newName = generateName("FUNC_");
-    obfuscatedNames.get(method.getSimpleName()).put(newName, func.getSimpleName());
-    func.setSimpleName(newName);
-  }
-
   private void obfuscateVariable(CtMethod method, CtVariable var) {
     if (var == null || var.getType() == null) {
       return;
@@ -209,7 +208,7 @@ public class ExtractFeaturesTask implements Runnable {
       obfuscatedNames.put(method.getSimpleName(), new HashMap<>());
     }
 
-    String newName = generateName("VARIABLE_");
+    String newName = generateName("VAR_");
     obfuscatedNames.get(method.getSimpleName()).put(newName, var.getSimpleName());
     new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
   }
