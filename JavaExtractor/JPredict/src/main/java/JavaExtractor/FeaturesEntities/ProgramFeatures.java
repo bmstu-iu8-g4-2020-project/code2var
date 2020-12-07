@@ -12,12 +12,14 @@ public class ProgramFeatures {
 
   private String name;
   private String normalizedName;
+  private String methodName; // For code2var name != methodName
   private ArrayList<ProgramRelation> features = new ArrayList<>();
 
-  public ProgramFeatures(String name, CommandLineValues commandLineValues) {
+  public ProgramFeatures(String name, CommandLineValues commandLineValues, String methodName) {
     this.name = name;
     this.normalizedName = Common.normalizeName(name, Common.BlankWord);
     this.m_CommandLineValues = commandLineValues;
+    this.methodName = methodName;
   }
 
   @SuppressWarnings("StringBufferReplaceableByString")
@@ -31,16 +33,27 @@ public class ProgramFeatures {
     return stringBuilder.toString();
   }
 
-  public void addFeature(Property source, String path, Property target) {
-    String sourceName = source.getName();
-    String targetName = target.getName();
-    if (m_CommandLineValues.OnlyVars && source.getName().equals(this.normalizedName)) {
-      sourceName = Common.variableName;
+  public void addFeature(String source, String path, String target) {
+    if (m_CommandLineValues.OnlyVars && source.equals(this.name)) {
+      source = Common.variableName;
     }
-    if (m_CommandLineValues.OnlyVars && target.getName().equals(this.normalizedName)) {
-      targetName = Common.variableName;
+    if (m_CommandLineValues.OnlyVars && target.equals(this.name)) {
+      target = Common.variableName;
     }
-    ProgramRelation newRelation = new ProgramRelation(sourceName, targetName, path);
+    if (source.equals(this.methodName)){
+      source = Common.methodName;
+    }
+    if (target.equals(this.methodName)){
+      target = Common.methodName;
+    }
+    if (m_CommandLineValues.OnlyVars && source.startsWith("VAR_")){
+      source = "VAR";
+    }
+    if (m_CommandLineValues.OnlyVars && target.startsWith("VAR_")){
+      target = "VAR";
+    }
+
+    ProgramRelation newRelation = new ProgramRelation(source, target, path);
     features.add(newRelation);
   }
 
@@ -63,5 +76,9 @@ public class ProgramFeatures {
 
   public ArrayList<ProgramRelation> getFeatures() {
     return features;
+  }
+
+  public String getMethodName() {
+    return methodName;
   }
 }

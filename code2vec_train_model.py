@@ -36,16 +36,18 @@ class code2vec(tf.keras.Model, ABC):
                  target_vocab_size,
                  path_vocab_size,
                  max_contexts=config.config.MAX_CONTEXTS,
-                 embed_dim=config.config.EMBED_DIMENSION,
+                 token_embed_dim=config.config.TOKEN_EMBED_DIMENSION,
+                 path_embed_dim=config.config.PATH_EMBED_DIMENSION,
                  dropout_keep_rate=config.config.DROPOUT_KEEP_RATE):
         super(code2vec, self).__init__()
         self.max_contexts: int = max_contexts
         self.token_vocab_size: int = token_vocab_size
         self.target_vocab_size: int = target_vocab_size
         self.path_vocab_size: int = path_vocab_size
-        self.embed_dim: int = embed_dim
+        self.token_embed_dim: int = token_embed_dim
+        self.path_embed_dim: int = path_embed_dim
         self.dropout_rate: float = 1 - dropout_keep_rate
-        self.code_embed_dim: int = 3 * self.embed_dim  # 2*leaves_embed_dim + path_embed_dim
+        self.code_embed_dim: int = 2 * self.token_embed_dim + self.path_embed_dim
         self.history = None
         self.model = None  # TODO (RKulagin): look at tf github and check, how they store models
         self.vector_model = None
@@ -55,7 +57,7 @@ class code2vec(tf.keras.Model, ABC):
             input_source_token_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_source_token")
             input_target_token_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_target_token")
             token_embed = GPUEmbedding(input_dim=self.token_vocab_size,
-                                       output_dim=self.embed_dim,
+                                       output_dim=self.token_embed_dim,
                                        embeddings_initializer='uniform',
                                        dtype=tf.float32,
                                        name="token_embed")
@@ -63,7 +65,7 @@ class code2vec(tf.keras.Model, ABC):
             token_target_embed_model = tf.keras.Sequential([input_target_token_embed, token_embed])
             input_paths_embed = tf.keras.Input(shape=(self.max_contexts,), name="input_paths")
             paths_embed = GPUEmbedding(input_dim=self.path_vocab_size,
-                                       output_dim=self.embed_dim,
+                                       output_dim=self.path_embed_dim,
                                        dtype=tf.float32,
                                        embeddings_initializer='uniform',
                                        name="paths_embed")
@@ -85,9 +87,9 @@ class code2vec(tf.keras.Model, ABC):
             code_vectors = tf.keras.layers.Multiply()([batched_embed, attention_weights])
             code_vectors = tf.keras.backend.squeeze(code_vectors, axis=1)
             code_vectors = tf.keras.backend.sum(code_vectors, axis=1)
+            dropped_code_vectors = tf.keras.layers.Dropout(self.dropout_rate)(code_vectors)
             possible_targets = tf.keras.layers.Dense(self.target_vocab_size, activation="softmax",
-                                                     name="possible_targets")(
-                code_vectors)
+                                                     name="possible_targets")(dropped_code_vectors)
 
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
@@ -168,7 +170,7 @@ if __name__ == "__main__":
         config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.c2v.dict"
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.train_{args.net}.csv")
+                                csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
         dataset = pcr.get_dataset()
         # init lookups
 
@@ -193,18 +195,10 @@ if __name__ == "__main__":
                                                         monitor='accuracy',
                                                         verbose=1),
                      tf.keras.callbacks.TensorBoard(log_dir='./logs'),
-                     tf.keras.callbacks.EarlyStopping(monitor="loss",
-                                                      min_delta=0.01,
-                                                      mode="auto",
-                                                      ),
+
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
-
-        val_pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
-                                    csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.test_{args.net}.csv")  # Now it is normal that accuracy arround 0.
-        val_dataset = val_pcr.get_dataset()
-
-        model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks)
 
     if args.run:
         model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
