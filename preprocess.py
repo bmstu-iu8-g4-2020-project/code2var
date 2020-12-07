@@ -69,7 +69,7 @@ def save_dictionaries(path_freq, target_freq_train, word_freq, output_filename):
         print(f"Frequency dictionaries saved to: {output_filename}.c2v.dict")
 
 
-def process_file(file_path, max_contexts, out_file_path, target_freq):
+def process_file(file_path, max_contexts, out_file_path, target_freq=None):
     """
         Process file with AST paths, generate new csv file with correct number of context (each line should have similar
         number of tuple (leave, path, leave) even if it is empty
@@ -89,7 +89,7 @@ def process_file(file_path, max_contexts, out_file_path, target_freq):
                 if len(contexts) == 0:
                     raise RuntimeError(f"One of lines in your file has wrong size. Line {idx}: {line}")
                 target, contexts = contexts[0], contexts[1:]
-                if target in target_freq:
+                if target_freq is None or target in target_freq:
                     if len(contexts) > max_contexts:
                         contexts = random.sample(contexts, max_contexts)
                     empty_filler = " " * (max_contexts - len(contexts))

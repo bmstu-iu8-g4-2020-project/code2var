@@ -59,12 +59,19 @@ class PathContextReader:
             dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
                                       reshuffle_each_iteration=True)
         dataset = dataset.map(self._generate_input_tensors)
-        dataset = dataset.map(lambda x: ((x.path_source_token_indices,
-                                          x.path_indices,
-                                          x.path_target_token_indices),
-                                         x.target_index))
 
-        dataset = dataset.batch(config.config.BATCH_SIZE)
+        if self.is_train:
+            dataset = dataset.map(lambda x: ((x.path_source_token_indices,
+                                              x.path_indices,
+                                              x.path_target_token_indices),
+                                             x.target_index))
+            dataset = dataset.batch(config.config.BATCH_SIZE)
+        else:
+            dataset = dataset.map(lambda x: (((x.path_source_token_indices,
+                                               x.path_indices,
+                                               x.path_target_token_indices),
+                                              x.target_index), x.target_string))
+            dataset = dataset.batch(1)
         return dataset
 
     @tf.function
@@ -88,4 +95,6 @@ class PathContextReader:
                                   path_indices=paths_lookup,
                                   path_target_token_indices=path_targets_lookup,
                                   path_source_token_strings=path_sources,
-                                  path_strings=paths, path_target_token_strings=path_targets)
+                                  path_strings=paths,
+                                  path_target_token_strings=path_targets,
+                                  target_string=target)
