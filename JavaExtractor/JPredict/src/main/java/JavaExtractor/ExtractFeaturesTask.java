@@ -26,8 +26,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ExtractFeaturesTask implements Runnable {
-  private static final int MAX_VAR_NUMBERS = 25;
-  private static final Integer MAX_FUNC_NUMBERS = 100;
+  private static final int MAX_VAR_NUMBERS = 50;
   CommandLineValues m_CommandLineValues;
   Path filePath;
   String code;
@@ -130,12 +129,6 @@ public class ExtractFeaturesTask implements Runnable {
                       typeReference.setSimpleName("SOMETYPE");
                     }
                   });
-          freeIndexes =
-              (ArrayList<Integer>)
-                  IntStream.rangeClosed(0, MAX_FUNC_NUMBERS - 1)
-                      .boxed()
-                      .collect(Collectors.toList());
-          freeIndexesNumber = MAX_FUNC_NUMBERS;
 
           method
               .getElements(element -> element.getClass() == CtExecutableReferenceImpl.class)
