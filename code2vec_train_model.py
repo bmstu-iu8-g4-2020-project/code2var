@@ -172,6 +172,7 @@ if __name__ == "__main__":
         pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
                                 csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
         dataset = pcr.get_dataset()
+        val_dataset, test_dataset = pcr.get_subdatasets()
         # init lookups
 
         c2v_vocabs.target_vocab.get_word_to_index_lookup_table()
@@ -186,7 +187,7 @@ if __name__ == "__main__":
                          target_vocab_size=TARGET_VOCAB_SIZE,
                          path_vocab_size=PATH_VOCAB_SIZE)
 
-        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}.hdf5"
+        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}-{val_loss:.2f}.hdf5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
 
         callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -198,19 +199,22 @@ if __name__ == "__main__":
 
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
-        model.train(dataset, 100, callbacks)
+        if val_dataset is None:
+            model.train(dataset, 100, callbacks)
+        else:
+            model.train(dataset, 100, callbacks, validation_data=val_dataset)
 
     if args.run:
         model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
                          target_vocab_size=config.config.NET_TARGET_SIZE,
                          path_vocab_size=config.config.NET_PATH_SIZE)
-        model.load_weights("training/cp-0011.hdf5")
+        model.load_weights("training/cp-0023.hdf5")
 
         config.config.CREATE_VOCAB = True
-        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.var.c2v.dict"
+        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/java-small/java-small.var.c2v.dict"
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=False, vocabs=c2v_vocabs,
-                                csv_path=f"tmp_data_for_code2var/data.csv")
+                                csv_path=f"tmp_data_for_code2var/data.var.csv")
         dataset = pcr.get_dataset()
         for line, target in dataset:
             result = model(line)
@@ -218,5 +222,3 @@ if __name__ == "__main__":
             prediction_index = prediction_index[0][:-6:-1]
             prediction = c2v_vocabs.target_vocab.get_index_to_word_lookup_table().lookup(tf.constant(prediction_index))
             print(target.numpy(), "->", prediction.numpy())
-            # print(prediction_index)
-            # break

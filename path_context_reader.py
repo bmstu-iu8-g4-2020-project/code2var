@@ -34,6 +34,8 @@ class PathContextReader:
         self.vocabs = vocabs
         self.csv_path = csv_path
         self.dataset: Optional[tf.data.Dataset] = None
+        self.val_dataset: Optional[tf.data.Dataset] = None
+        self.test_dataset: Optional[tf.data.Dataset] = None
 
         self.vocabs.token_vocab.create_word_lookup()
         self.vocabs.path_vocab.create_word_lookup()
@@ -51,9 +53,12 @@ class PathContextReader:
                                                   [""] * (config.config.MAX_CONTEXTS + 1),
                                                   field_delim=" ",
                                                   use_quote_delim=False)
-        if self.repeat:
-            dataset = dataset.repeat()
         if self.is_train:
+            self.val_dataset = dataset.take(config.config.VALIDATION_SIZE)
+            self.test_dataset = dataset.skip(config.config.VALIDATION_SIZE).take(config.config.TEST_SIZE)
+            dataset = dataset.skip(config.config.VALIDATION_SIZE + config.config.TEST_SIZE)
+            if self.repeat:
+                dataset = dataset.repeat()
             if not self.repeat and config.config.NUM_TRAIN_EPOCHS > 1:
                 dataset = dataset.repeat(config.config.NUM_TRAIN_EPOCHS)
             dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
@@ -61,10 +66,22 @@ class PathContextReader:
         dataset = dataset.map(self._generate_input_tensors)
 
         if self.is_train:
+
             dataset = dataset.map(lambda x: ((x.path_source_token_indices,
                                               x.path_indices,
                                               x.path_target_token_indices),
                                              x.target_index))
+            self.val_dataset = self.val_dataset.map(self._generate_input_tensors)
+            self.test_dataset = self.test_dataset.map(self._generate_input_tensors)
+
+            self.val_dataset = self.val_dataset.map(lambda x: ((x.path_source_token_indices,
+                                                                x.path_indices,
+                                                                x.path_target_token_indices),
+                                                               x.target_index)).batch(1)
+            self.test_dataset = self.test_dataset.map(lambda x: ((x.path_source_token_indices,
+                                                                  x.path_indices,
+                                                                  x.path_target_token_indices),
+                                                                 x.target_index)).batch(1)
             dataset = dataset.batch(config.config.BATCH_SIZE)
         else:
             dataset = dataset.map(lambda x: (((x.path_source_token_indices,
@@ -98,3 +115,6 @@ class PathContextReader:
                                   path_strings=paths,
                                   path_target_token_strings=path_targets,
                                   target_string=target)
+
+    def get_subdatasets(self):
+        return self.val_dataset, self.test_dataset

@@ -107,7 +107,7 @@ def _find(pattern, path):
     return result
 
 
-def create_target_vocab(data_files: List[str], output_name: str, net_type: NetType):
+def create_target_vocab(data_files: List[str], output_name: str, min_folders: Optional[int] = 1):
     df = []
     for file_path in data_files:
         df.append(pd.read_csv(file_path, sep=" ", usecols=[0], names=["Target"], header=None))
@@ -116,13 +116,14 @@ def create_target_vocab(data_files: List[str], output_name: str, net_type: NetTy
         df[-1]["Folders"] = 1
     vocab = pd.concat(df)
     vocab = vocab.groupby(["Target"]).sum().reset_index()
-    vocab = vocab.query('Folders > 1')
+    vocab = vocab.query(f"Folders > {min_folders}")
     with open(output_name, "w") as file:
         for target, freq in zip(vocab["Target"], vocab["Frequency"]):
             file.write(f"{target} {freq}\n")
 
 
-def process_net(data_dir_path: str, combined_data_path: str, output_name: str, net_type: NetType):
+def process_net(data_dir_path: str, combined_data_path: str, output_name: str, net_type: NetType,
+                min_folders: Optional[int]):
     """
         Process target files for train, test and validation datasets,
         generates token and path vocabs for training dataset.
@@ -133,12 +134,15 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
         net_type (): vec or var.
 
     """
-    target_filters = [
-        lambda line: line.frequency > min_occurrences,
-        # lambda line: "|" not in line.name,
-        lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"},
-        lambda line: line.name not in {"element", "object", "variable", "var"},
-    ]
+    if min_occurrences != 0: # 0 means we have no need in filters
+        target_filters = [
+            lambda line: line.frequency > min_occurrences,
+            # lambda line: "|" not in line.name,
+            lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"},
+            lambda line: line.name not in {"element", "object", "variable", "var"},
+        ]
+    else:
+        target_filters = []
 
     data_files = _find(f"*.{net_type.value}.data.log", data_dir_path)
     if len(data_files) == 0:
@@ -147,7 +151,7 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
     target_vocab_path = f"{output_name}.{net_type.value}.target.vocab"
     token_vocab_path = f"{output_name}.{net_type.value}.token.vocab"
     path_vocab_path = f"{output_name}.{net_type.value}.path.vocab"
-    create_target_vocab(data_files, target_vocab_path, net_type)
+    create_target_vocab(data_files, target_vocab_path, min_folders)
 
     target_freq = parse_vocab(target_vocab_path, filters=target_filters)
 
@@ -202,7 +206,7 @@ if __name__ == '__main__':
                         dest="min_folders",
                         help="Minimal folders number for target to be found for passing filter.",
                         type=int,
-                        default=0)
+                        default=1)
     parser.add_argument("--output_name",
                         dest="output_name",
                         metavar="FILE",
@@ -214,4 +218,4 @@ if __name__ == '__main__':
     min_occurrences = args.min_occurrences
     min_folders = args.min_folders
 
-    process_net(args.data_dir, args.combined_file, args.output_name, net_type=net)
+    process_net(args.data_dir, args.combined_file, args.output_name, net_type=net, min_folders=min_folders)

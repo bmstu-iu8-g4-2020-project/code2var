@@ -8,20 +8,19 @@ PYTHON=python3
 
 FILE=$1
 OUTPUT_DIR=$2
+
+OUTPUT_FILE="$OUTPUT_DIR"/data.code2var
 cd JavaExtractor/JPredict/ && mvn clean -q install && cd ../..
 
 chmod +x JavaExtractor/extract.py
 mkdir "$OUTPUT_DIR"/t/
 mv "$FILE" "$OUTPUT_DIR"/t/
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir "$OUTPUT_DIR"/ --only_for_vars true 2>&1 | tee "$OUTPUT_DIR"/processing.log
+  --dir "$OUTPUT_DIR"/ --obfuscate true --only_for_vars true 2>&1 | tee "$OUTPUT_DIR"/processing.log
 
-find "$OUTPUT_DIR" -name '*.data.log' -exec cat {} > "$OUTPUT_DIR"/data.code2var \;
+find "$OUTPUT_DIR" -name '*.data.log' -exec cat {} > ${OUTPUT_FILE} \;
 
 chmod +x preprocess.py
 
-${PYTHON} preprocess.py --test_data_var "$OUTPUT_DIR"/data.code2var \
-  --word_histogram_var dataset/java-small/java-small.train.leaves.vocab \
-  --path_histogram_var dataset/java-small/java-small.train.path.vocab \
-  --target_histogram_train_var dataset/java-small/java-small.train.variables.vocab  \
-  --output_name "$OUTPUT_DIR"/data --net code2var --single_dataset true
+${PYTHON} preprocess.py --data_dir ${OUTPUT_DIR} --combined_file ${OUTPUT_FILE} --max_contexts 300 \
+  --output_name ${OUTPUT_DIR}/data --net var --occurrences 0 --min_folders 0
