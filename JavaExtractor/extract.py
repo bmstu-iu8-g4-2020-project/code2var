@@ -26,7 +26,7 @@ def ExtractFeaturesForDir(args, dir, prefix):
     command = ["java", "-cp", args.jar, "JavaExtractor.App",
                "--max_path_length", str(args.max_path_length), "--max_path_width",
                str(args.max_path_width),
-               "--dir", dir, "--num_threads", str(args.num_threads)]
+               "--dir", dir, "--num_threads", str(args.num_threads), "--preprocess"]
     suffix = ".vec.data.log"
     if args.only_vars:
         command += ["--variables"]
@@ -88,6 +88,7 @@ if __name__ == "__main__":
         command = ["java -cp", args.jar, "JavaExtractor.App", "--max_path_length ",
                    str(args.max_path_length), "--max_path_width",
                    str(args.max_path_width),
+                   "--preprocess",
                    "--file", args.file]
         if args.only_vars:
             command += ["--only_for_vars"]

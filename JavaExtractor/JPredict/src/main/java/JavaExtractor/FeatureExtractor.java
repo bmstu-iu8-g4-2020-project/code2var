@@ -52,19 +52,24 @@ public class FeatureExtractor {
     return upStack;
   }
 
-  public ArrayList<ProgramFeatures> extractFeatures(String code)
-      throws ParseException, IOException {
+  public static ArrayList<MethodContent> extractMethods(String code) throws IOException {
     CompilationUnit compilationUnit = parseFileWithRetries(code);
     FunctionVisitor functionVisitor = new FunctionVisitor();
     functionVisitor.visit(compilationUnit, null);
 
     ArrayList<MethodContent> methods = functionVisitor.getMethodContents();
+    return methods;
+  }
+
+  public ArrayList<ProgramFeatures> extractFeatures(String code)
+      throws ParseException, IOException {
+    ArrayList<MethodContent> methods = extractMethods(code);
     ArrayList<ProgramFeatures> programs = generatePathFeatures(methods);
 
     return programs;
   }
 
-  private CompilationUnit parseFileWithRetries(String code) throws IOException {
+  private static CompilationUnit parseFileWithRetries(String code) throws IOException {
     final String classPrefix = "public class Test {";
     final String classSuffix = "}";
     final String methodPrefix = "SomeUnknownReturnType f() {";

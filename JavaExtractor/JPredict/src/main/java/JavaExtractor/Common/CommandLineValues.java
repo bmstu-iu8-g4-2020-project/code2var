@@ -14,14 +14,17 @@ public class CommandLineValues {
   @Option(name = "--dir", forbids = "--file")
   public String Dir = null;
 
-  @Option(name = "--max_path_length", required = true)
-  public int MaxPathLength;
+  @Option(name = "--max_path_length")
+  public int MaxPathLength = 8;
 
-  @Option(name = "--max_path_width", required = true)
-  public int MaxPathWidth;
+  @Option(name = "--max_path_width")
+  public int MaxPathWidth = 2;
 
   @Option(name = "--no_hash")
   public boolean NoHash = false;
+
+  @Option(name = "--preprocess")
+  public boolean Preprocess = false;
 
   @Option(name = "--num_threads")
   public int NumThreads = 1;

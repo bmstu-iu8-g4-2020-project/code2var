@@ -219,7 +219,7 @@ public class ExtractFeaturesTask implements Runnable {
     return stringBuilder.toString();
   }
 
-  private Collection<CtType<?>> returnAllTypes(String code) {
+  public static Collection<CtType<?>> returnAllTypes(String code) {
     Launcher launcher = new Launcher();
     launcher.addInputResource(new VirtualFile(code));
     launcher.getEnvironment().setNoClasspath(true);

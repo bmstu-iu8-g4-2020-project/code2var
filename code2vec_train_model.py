@@ -1,11 +1,10 @@
-import os
-from abc import ABC
-
+import csv
 import config
 import numpy as np
+import os
 import tensorflow as tf
 
-
+from abc import ABC
 from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
 from tensorflow.python.keras.utils import tf_utils
@@ -222,3 +221,6 @@ if __name__ == "__main__":
             prediction_index = prediction_index[0][:-6:-1]
             prediction = c2v_vocabs.target_vocab.get_index_to_word_lookup_table().lookup(tf.constant(prediction_index))
             print(target.numpy(), "->", prediction.numpy())
+            with open("tmp_data_for_code2var/result.csv", 'a', encoding='utf8') as file:
+                writer = csv.writer(file)
+                writer.writerow(np.concatenate([target.numpy().astype("U"), prediction.numpy().astype('U')]))
