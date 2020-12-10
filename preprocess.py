@@ -21,11 +21,15 @@ class NetType(Enum):
     code2vec = "vec"
 
 
+default_filters = [
+    lambda line: line.frequency > config.config.DEFAULT_MIN_OCCURENCES,
+]
+
 def parse_vocab(path: str,
                 limit: Optional[int] = None,
-                filters: Optional[List[Callable]] = None):
+                filters: Optional[List[Callable]] = default_filters):
     """
-        Parse histogram files containing target|token|path aёёnd their frequency pairs.
+        Parse histogram files containing target|token|path and their frequency pairs.
         Creates word to frequency dicts for future uploading to the Vocab.
 
         Note that parsed file for token and path should be generated from functions with pre-limited targets to avoid
@@ -39,12 +43,6 @@ def parse_vocab(path: str,
     Returns:
         dict containing words in keys and their frequencies in values.
     """
-    if filters is None:
-        # Move out of function as _default_filters = [...]
-        # when "args" variable scope issues are addressed
-        filters = [
-            lambda line: line.frequency > 50,
-        ]
 
     with open(path, "r") as file:
         word_to_freq = (line.rstrip("\n").split(" ") for line in file)

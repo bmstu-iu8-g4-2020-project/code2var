@@ -1,5 +1,3 @@
-
-
 MAX_PATH_LENGTH=8
 MAX_PATH_WIDTH=2
 EXTRACTOR_JAR=JavaExtractor/JPredict/target/JavaExtractor-0.0.1-SNAPSHOT.jar

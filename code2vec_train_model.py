@@ -165,8 +165,6 @@ if __name__ == "__main__":
 
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     if args.train:
-        config.config.CREATE_VOCAB = True
-        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.c2v.dict"
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
                                 csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
@@ -198,10 +196,7 @@ if __name__ == "__main__":
 
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
-        if val_dataset is None:
-            model.train(dataset, 100, callbacks)
-        else:
-            model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks, validation_data=val_dataset)
 
     if args.run:
         model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
@@ -209,8 +204,6 @@ if __name__ == "__main__":
                          path_vocab_size=config.config.NET_PATH_SIZE)
         model.load_weights("training/cp-0023.hdf5")
 
-        config.config.CREATE_VOCAB = True
-        config.config.TRAINING_FREQ_DICTS_PATH = f"dataset/java-small/java-small.var.c2v.dict"
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=False, vocabs=c2v_vocabs,
                                 csv_path=f"tmp_data_for_code2var/data.var.csv")
@@ -218,7 +211,7 @@ if __name__ == "__main__":
         for line, target in dataset:
             result = model(line)
             prediction_index = result.numpy().argsort().astype(np.int32)
-            prediction_index = prediction_index[0][:-6:-1]
+            prediction_index = prediction_index[0][:-1 - config.config.NUMBER_OF_PREDICTIONS:-1]
             prediction = c2v_vocabs.target_vocab.get_index_to_word_lookup_table().lookup(tf.constant(prediction_index))
             print(target.numpy(), "->", prediction.numpy())
             with open("tmp_data_for_code2var/result.csv", 'a', encoding='utf8') as file:

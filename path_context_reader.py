@@ -47,6 +47,13 @@ class PathContextReader:
             self.dataset = self._generate_dataset()
         return self.dataset
 
+    @staticmethod
+    def _parse_reader_input_tensor(tensor):
+        return ((tensor.path_source_token_indices,
+                 tensor.path_indices,
+                 tensor.path_target_token_indices),
+                tensor.target_index)
+
     def _generate_dataset(self) -> tf.data.Dataset:
         """Generates dataset for code2vec|code2var from vocabs"""
         dataset = tf.data.experimental.CsvDataset(self.csv_path,
@@ -63,25 +70,19 @@ class PathContextReader:
                 dataset = dataset.repeat(config.config.NUM_TRAIN_EPOCHS)
             dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
                                       reshuffle_each_iteration=True)
+
         dataset = dataset.map(self._generate_input_tensors)
+        if self.repeat:
+            dataset = dataset.repeat()
 
         if self.is_train:
 
-            dataset = dataset.map(lambda x: ((x.path_source_token_indices,
-                                              x.path_indices,
-                                              x.path_target_token_indices),
-                                             x.target_index))
+            dataset = dataset.map(self._parse_reader_input_tensor)
             self.val_dataset = self.val_dataset.map(self._generate_input_tensors)
             self.test_dataset = self.test_dataset.map(self._generate_input_tensors)
 
-            self.val_dataset = self.val_dataset.map(lambda x: ((x.path_source_token_indices,
-                                                                x.path_indices,
-                                                                x.path_target_token_indices),
-                                                               x.target_index)).batch(1)
-            self.test_dataset = self.test_dataset.map(lambda x: ((x.path_source_token_indices,
-                                                                  x.path_indices,
-                                                                  x.path_target_token_indices),
-                                                                 x.target_index)).batch(1)
+            self.val_dataset = self.val_dataset.map(self._parse_reader_input_tensor).batch(1)
+            self.test_dataset = self.test_dataset.map(self._parse_reader_input_tensor).batch(1)
             dataset = dataset.batch(config.config.BATCH_SIZE)
         else:
             dataset = dataset.map(lambda x: (((x.path_source_token_indices,
