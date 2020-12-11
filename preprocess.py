@@ -3,17 +3,18 @@ import fnmatch
 import os
 import pickle
 import random
-from enum import Enum
-
 import pandas as pd
-
 import config
 
 from argparse import ArgumentParser
 from collections import namedtuple
+from enum import Enum
 from typing import Optional, List, Callable
 
 FreqDictLine = namedtuple("FreqDictLine", ["name", "frequency"])
+
+APPROVED_SHORT_TARGETS = {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"}
+BAD_LONG_TARGETS = {"element", "object", "variable", "var"}
 
 
 class NetType(Enum):
@@ -24,6 +25,7 @@ class NetType(Enum):
 default_filters = [
     lambda line: line.frequency > config.config.DEFAULT_MIN_OCCURENCES,
 ]
+
 
 def parse_vocab(path: str,
                 limit: Optional[int] = None,
@@ -132,12 +134,12 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
         net_type (): vec or var.
 
     """
-    if min_occurrences != 0: # 0 means we have no need in filters
+    if min_occurrences != 0:  # 0 means we have no need in filters
         target_filters = [
             lambda line: line.frequency > min_occurrences,
             # lambda line: "|" not in line.name,
-            lambda line: len(line.name) > 2 or line.name in {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"},
-            lambda line: line.name not in {"element", "object", "variable", "var"},
+            lambda line: len(line.name) > 2 or line.name in APPROVED_SHORT_TARGETS,
+            lambda line: line.name not in BAD_LONG_TARGETS,
         ]
     else:
         target_filters = []

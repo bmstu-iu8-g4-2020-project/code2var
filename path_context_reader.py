@@ -49,10 +49,9 @@ class PathContextReader:
 
     @staticmethod
     def _parse_reader_input_tensor(tensor):
-        return ((tensor.path_source_token_indices,
-                 tensor.path_indices,
-                 tensor.path_target_token_indices),
-                tensor.target_index)
+        return (tensor.path_source_token_indices,
+                tensor.path_indices,
+                tensor.path_target_token_indices)
 
     def _generate_dataset(self) -> tf.data.Dataset:
         """Generates dataset for code2vec|code2var from vocabs"""
@@ -77,18 +76,15 @@ class PathContextReader:
 
         if self.is_train:
 
-            dataset = dataset.map(self._parse_reader_input_tensor)
+            dataset = dataset.map(lambda x: (self._parse_reader_input_tensor(x), x.target_index))
             self.val_dataset = self.val_dataset.map(self._generate_input_tensors)
             self.test_dataset = self.test_dataset.map(self._generate_input_tensors)
 
-            self.val_dataset = self.val_dataset.map(self._parse_reader_input_tensor).batch(1)
-            self.test_dataset = self.test_dataset.map(self._parse_reader_input_tensor).batch(1)
+            self.val_dataset = self.val_dataset.map(lambda x: (self._parse_reader_input_tensor(x), x.target_index)).batch(1)
+            self.test_dataset = self.test_dataset.map(lambda x: (self._parse_reader_input_tensor(x), x.target_index)).batch(1)
             dataset = dataset.batch(config.config.BATCH_SIZE)
         else:
-            dataset = dataset.map(lambda x: (((x.path_source_token_indices,
-                                               x.path_indices,
-                                               x.path_target_token_indices),
-                                              x.target_index), x.target_string))
+            dataset = dataset.map(lambda x: (self._parse_reader_input_tensor(x), x.target_string))
             dataset = dataset.batch(1)
         return dataset
 
