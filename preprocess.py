@@ -175,8 +175,7 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
     os.system(f"cut -d' ' -f2- < {args.output_name}.{net_type.value}.csv | tr ' ' '\n' | cut -d',' -f2 | "
               "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + path_vocab_path)
     path_freq = parse_vocab(path_vocab_path, config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT,
-                            filters=[lambda line: line.frequency > 1,
-                                     ])
+                            filters=[lambda line: True])
     word_freq = parse_vocab(token_vocab_path)
 
     save_dictionaries(target_freq_train=target_freq, path_freq=path_freq,

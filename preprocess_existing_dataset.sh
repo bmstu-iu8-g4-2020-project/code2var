@@ -53,13 +53,13 @@ PATH_VOCABULARY_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.var.train.path.vocab
 
 
 # Generate vocabularies for code2vec
-find ${TRAIN_FILES_DIR} -name '*vec.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
-find ${TRAIN_FILES_DIR} -name '*var.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
+#find ${TRAIN_FILES_DIR} -name '*vec.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
+#find ${TRAIN_FILES_DIR} -name '*var.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
 
 chmod +x preprocess.py
 
 echo ${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VEC} --max_contexts ${MAX_CONTEXTS} \
-  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net vec --occurrences 25  --min_folders 0
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net vec --occurrences 35  --min_folders 0
 
 #${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
 #  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var --occurrences 25
