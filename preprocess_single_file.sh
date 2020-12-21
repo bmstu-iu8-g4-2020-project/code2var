@@ -14,11 +14,11 @@ chmod +x JavaExtractor/extract.py
 mkdir "$OUTPUT_DIR"/t/
 mv "$FILE" "$OUTPUT_DIR"/t/
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
-  --dir "$OUTPUT_DIR"/ --obfuscate true --only_for_vars true 2>&1 | tee "$OUTPUT_DIR"/processing.log
+  --dir "$OUTPUT_DIR"/ --obfuscate true  2>&1 | tee "$OUTPUT_DIR"/processing.log
 
 find "$OUTPUT_DIR" -name '*.data.log' -exec cat {} > ${OUTPUT_FILE} \;
 
 chmod +x preprocess.py
 
 ${PYTHON} preprocess.py --data_dir ${OUTPUT_DIR} --combined_file ${OUTPUT_FILE} --max_contexts 300 \
-  --output_name ${OUTPUT_DIR}/data --net var --occurrences 0 --min_folders 0
+  --output_name ${OUTPUT_DIR}/data --net vec --occurrences 0 --min_folders 0

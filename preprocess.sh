@@ -2,7 +2,7 @@
 set -e
 
 
-DATASET_NAME=java-small
+DATASET_NAME=java-med
 
 TRAIN_FILES_DIR=dataset/${DATASET_NAME}/training/
 VALIDATION_FILES_DIR=dataset/${DATASET_NAME}/validation/
@@ -63,17 +63,29 @@ cd JavaExtractor/JPredict/ && mvn clean -q install && cd ../..
 echo "Obfuscating flag set " ${OBFUSCATING}
 
 
+# Extract AST path for code2vec
+echo "Processing train files from "${TRAIN_FILES_DIR}
+${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
+  --dir ${TRAIN_FILES_DIR} --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}var_processing.log
+
+find ${TRAIN_FILES_DIR} -name '*vec.data.log' -exec cat {} > ${TRAIN_PATH_VEC} \;
+echo "Done. Generated ${TRAIN_PATH_VEC}"
+
+
 # Extract AST path for code2var
 echo "Processing train files from "${TRAIN_FILES_DIR}
 ${PYTHON} JavaExtractor/extract.py -maxlen ${MAX_PATH_LENGTH} -maxwidth ${MAX_PATH_WIDTH} -j ${EXTRACTOR_JAR} \
   --dir ${TRAIN_FILES_DIR} --only_for_vars true  --obfuscate ${OBFUSCATING} 2>&1 | tee ${TRAIN_FILES_DIR}var_processing.log
 
-find ${TRAIN_FILES_DIR} -name '*.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
+find ${TRAIN_FILES_DIR} -name '*var.data.log' -exec cat {} > ${TRAIN_PATH_VAR} \;
 echo "Done. Generated ${TRAIN_PATH_VAR}"
 
 
 
 chmod +x preprocess.py
+
+${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VEC} --max_contexts ${MAX_CONTEXTS} \
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net vec --occurrences 50 --min_folders 0
 
 ${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
   --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var --occurrences 50

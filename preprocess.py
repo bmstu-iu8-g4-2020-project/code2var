@@ -14,7 +14,7 @@ from typing import Optional, List, Callable
 FreqDictLine = namedtuple("FreqDictLine", ["name", "frequency"])
 
 APPROVED_SHORT_TARGETS = {"i", "j", "k", "e", "s", "o", "db", "fs", "it", "is", "in", "to"}
-BAD_LONG_TARGETS = {"element", "object", "variable", "var"}
+BAD_LONG_TARGETS = {"element", "object", "variable", "var", "func", "function"}
 
 
 class NetType(Enum):
@@ -107,19 +107,23 @@ def _find(pattern, path):
     return result
 
 
-def create_target_vocab(data_files: List[str], output_name: str, min_folders: Optional[int] = 1):
-    df = []
-    for file_path in data_files:
-        df.append(pd.read_csv(file_path, sep=" ", usecols=[0], names=["Target"], header=None))
-        df[-1]["Frequency"] = 1
-        df[-1] = df[-1].groupby("Target").sum().reset_index()
-        df[-1]["Folders"] = 1
-    vocab = pd.concat(df)
-    vocab = vocab.groupby(["Target"]).sum().reset_index()
-    vocab = vocab.query(f"Folders > {min_folders}")
-    with open(output_name, "w") as file:
-        for target, freq in zip(vocab["Target"], vocab["Frequency"]):
-            file.write(f"{target} {freq}\n")
+def create_target_vocab(data_files: List[str], output_name: str, min_folders: Optional[int] = 1, combined_data=None):
+    if min_folders != 0:
+        df = []
+        for file_path in data_files:
+            df.append(pd.read_csv(file_path, sep=" ", usecols=[0], names=["Target"], header=None))
+            df[-1]["Frequency"] = 1
+            df[-1] = df[-1].groupby("Target").sum().reset_index()
+            df[-1]["Folders"] = 1
+        vocab = pd.concat(df)
+        vocab = vocab.groupby(["Target"]).sum().reset_index()
+        vocab = vocab.query(f"Folders > {min_folders}")
+        with open(output_name, "w") as file:
+            for target, freq in zip(vocab["Target"], vocab["Frequency"]):
+                file.write(f"{target} {freq}\n")
+    else:
+        os.system(
+            f"cat {combined_data} | cut -d' ' -f1 |" + " awk '{n[$0]++} END {for (i in n) print i,n[i]}' " + f" > {output_name}")
 
 
 def process_net(data_dir_path: str, combined_data_path: str, output_name: str, net_type: NetType,
@@ -151,7 +155,7 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
     target_vocab_path = f"{output_name}.{net_type.value}.target.vocab"
     token_vocab_path = f"{output_name}.{net_type.value}.token.vocab"
     path_vocab_path = f"{output_name}.{net_type.value}.path.vocab"
-    create_target_vocab(data_files, target_vocab_path, min_folders)
+    create_target_vocab(data_files, target_vocab_path, min_folders, combined_data=combined_data_path)
 
     target_freq = parse_vocab(target_vocab_path, filters=target_filters)
 
@@ -170,7 +174,9 @@ def process_net(data_dir_path: str, combined_data_path: str, output_name: str, n
     # csv is split instead of .code2vec/var because we don't want redundant paths from not filtered functions to be included.
     os.system(f"cut -d' ' -f2- < {args.output_name}.{net_type.value}.csv | tr ' ' '\n' | cut -d',' -f2 | "
               "awk '{n[$0]++} END {for (i in n) print i,n[i]}' > " + path_vocab_path)
-    path_freq = parse_vocab(path_vocab_path, config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT, filters=[lambda _: True])
+    path_freq = parse_vocab(path_vocab_path, config.config.MAX_NUMBER_OF_WORDS_IN_FREQ_DICT,
+                            filters=[lambda line: line.frequency > 1,
+                                     ])
     word_freq = parse_vocab(token_vocab_path)
 
     save_dictionaries(target_freq_train=target_freq, path_freq=path_freq,

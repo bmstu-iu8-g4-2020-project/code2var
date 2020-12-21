@@ -7,7 +7,7 @@ import tensorflow as tf
 from abc import ABC
 from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
-from tensorflow.python.keras.utils import tf_utils
+from tensorflow.python.keras.utils import tf_utils, metrics_utils
 from typing import List
 from path_context_reader import PathContextReader
 from vocabulary import Code2VecVocabs
@@ -93,10 +93,48 @@ class code2vec(tf.keras.Model, ABC):
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
             self.vector_model = tf.keras.Model(inputs=inputs, outputs=code_vectors)
-            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'],
+            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=["accuracy"],
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
             # self.vector_model.compile()
             print(self.model.summary())
+            tf.keras.utils.plot_model(self.model, show_shapes=True)
+
+    @staticmethod
+    def recall(y_true, y_pred):
+        """Recall metric.
+
+        Only computes a batch-wise average of recall.
+
+        Computes the recall, a metric for multi-label classification of
+        how many relevant items are selected.
+        """
+
+        true_positives = tf.keras.backend.sum(tf.keras.backend.round(
+            tf.keras.backend.clip(tf.cast(
+                tf.cast(tf.keras.backend.transpose(y_true), tf.dtypes.int64) == tf.keras.backend.argmax(y_pred, axis=1),
+                tf.dtypes.float32), 0, 1)))
+        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(
+            tf.keras.backend.clip(tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_true, axis=1),
+                                          tf.dtypes.float32), 0, 1)))
+        # tf.keras.backend.print_tensor(
+        #     tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_pred, axis=1), tf.dtypes.float32))
+        # tf.keras.backend.print_tensor(
+        #
+        #     tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_true, axis=1), tf.dtypes.float32))
+        # tf.keras.backend.print_tensor(
+        #     true_positives)
+        # tf.keras.backend.print_tensor(
+        #     possible_positives)
+        # tf.keras.backend.print_tensor(y_true)
+        # tf.keras.backend.print_tensor(tf.keras.backend.argmax(y_true, axis=1))
+        # tf.keras.backend.print_tensor(tf.keras.backend.argmax(y_pred, axis=1))
+        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
+        return recall
+
+    @staticmethod
+    def f1(y_true, y_pred):
+        return tf.keras.backend.sum(
+            tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_pred, axis=1), tf.dtypes.int32))
 
     def get_vector(self, inputs):
         return self.vector_model(inputs)
@@ -184,7 +222,7 @@ if __name__ == "__main__":
                          target_vocab_size=TARGET_VOCAB_SIZE,
                          path_vocab_size=PATH_VOCAB_SIZE)
 
-        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}-{val_loss:.2f}.hdf5"
+        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}-{loss:.2f}.hdf5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
 
         callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -196,17 +234,17 @@ if __name__ == "__main__":
 
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
-        model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks, validation_data=val_dataset, validation_freq=3)
 
     if args.run:
         model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
                          target_vocab_size=config.config.NET_TARGET_SIZE,
                          path_vocab_size=config.config.NET_PATH_SIZE)
-        model.load_weights("training/cp-0023.hdf5")
+        model.load_weights("training-code2var-vec/cp-0002-1.91.hdf5")
 
         c2v_vocabs = Code2VecVocabs()
         pcr = PathContextReader(is_train=False, vocabs=c2v_vocabs,
-                                csv_path=f"tmp_data_for_code2var/data.var.csv")
+                                csv_path=f"tmp_data_for_code2var/data.vec.csv")
         dataset = pcr.get_dataset()
         for line, target in dataset:
             result = model(line)

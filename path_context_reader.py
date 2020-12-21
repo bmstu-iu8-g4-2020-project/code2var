@@ -63,8 +63,6 @@ class PathContextReader:
             self.val_dataset = dataset.take(config.config.VALIDATION_SIZE)
             self.test_dataset = dataset.skip(config.config.VALIDATION_SIZE).take(config.config.TEST_SIZE)
             dataset = dataset.skip(config.config.VALIDATION_SIZE + config.config.TEST_SIZE)
-            if self.repeat:
-                dataset = dataset.repeat()
             if not self.repeat and config.config.NUM_TRAIN_EPOCHS > 1:
                 dataset = dataset.repeat(config.config.NUM_TRAIN_EPOCHS)
             dataset = dataset.shuffle(config.config.SHUFFLE_BUFFER_SIZE,
