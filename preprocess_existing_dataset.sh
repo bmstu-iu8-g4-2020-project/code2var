@@ -58,8 +58,8 @@ PATH_VOCABULARY_VAR=dataset/${DATASET_NAME}/${DATASET_NAME}.var.train.path.vocab
 
 chmod +x preprocess.py
 
-echo ${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VEC} --max_contexts ${MAX_CONTEXTS} \
-  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net vec --occurrences 35  --min_folders 0
+${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VEC} --max_contexts ${MAX_CONTEXTS} \
+  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net vec --occurrences 0  --min_folders 0
 
 #${PYTHON} preprocess.py --data_dir dataset/${DATASET_NAME} --combined_file ${TRAIN_PATH_VAR} --max_contexts ${MAX_CONTEXTS} \
-#  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var --occurrences 25
+#  --output_name dataset/${DATASET_NAME}/${DATASET_NAME} --net var --occurrences 0

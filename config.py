@@ -5,7 +5,8 @@ class config:
     NUM_TRAIN_EPOCHS = 2
     SHUFFLE_BUFFER_SIZE = 10000
     CODE2VEC_VOCABS_PATH = ""
-    TRAINING_FREQ_DICTS_PATH = "dataset/java-med/java-med.vec.c2v.dict"
+    VEC_TRAINING_FREQ_DICTS_PATH = "dataset/j-med/java-med.vec.c2v.dict"
+    VAR_TRAINING_FREQ_DICTS_PATH = "dataset/java-small/java-small.var.c2v.dict"
     CREATE_VOCAB = True
     DEFAULT_INT32_LOOKUP_VALUE = 0
     DEFAULT_STRING_LOOKUP_VALUE = "None"
@@ -19,7 +20,10 @@ class config:
     TEST_SIZE = 0
     NUMBER_OF_PREDICTIONS = 5
 
+    VEC_NET_TOKEN_SIZE = 3610
+    VEC_NET_PATH_SIZE = 1468667
+    VEC_NET_TARGET_SIZE = 3212
 
-    NET_TOKEN_SIZE = 438
-    NET_PATH_SIZE = 222105
-    NET_TARGET_SIZE = 240
+    VAR_NET_TOKEN_SIZE = 440
+    VAR_NET_PATH_SIZE = 312188
+    VAR_NET_TARGET_SIZE = 679
