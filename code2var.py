@@ -297,7 +297,7 @@ if __name__ == "__main__":
         model = code2vec(token_vocab_size=tokens_numbers,
                          target_vocab_size=target_numbers,
                          path_vocab_size=path_numbers,
-                         custom_metrics=["accuracy"])
+                         custom_metrics=[Precision()])
         # model.load_weights("training-code2var-vec/cp-0002-1.91.hdf5")
         model.load_weights(model_path)
 
