@@ -8,10 +8,48 @@ from abc import ABC
 from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
 from tensorflow.python.keras.utils import tf_utils, metrics_utils
-from typing import List
+from typing import List, Optional, Callable
 from path_context_reader import PathContextReader
 from preprocess import NetType
 from vocabulary import Code2VecVocabs
+from functools import reduce
+
+
+class Precision(tf.metrics.Metric):
+    FilterType = Callable[[tf.Tensor, tf.Tensor], tf.Tensor]
+
+    def __init__(self,
+                 index_to_word_table: Optional[tf.lookup.StaticHashTable] = None,
+                 topk_predicted_words=None,
+                 predicted_words_filters: Optional[List[FilterType]] = None,
+                 subtokens_delimiter: str = '|', name=None, dtype=None):
+        super(Precision, self).__init__(name=name, dtype=dtype)
+        self.true = self.add_weight('true', shape=(), initializer=tf.zeros_initializer)
+        self.total = self.add_weight('total', shape=(), initializer=tf.zeros_initializer)
+        self.index_to_word_table = index_to_word_table
+        self.topk_predicted_words = topk_predicted_words
+        self.predicted_words_filters = predicted_words_filters
+        self.subtokens_delimiter = subtokens_delimiter
+
+    @tf.function
+    def _get_top_predicted_words(self, predictions, k):
+        return tf.nn.top_k(predictions, k=k, sorted=True).indices
+
+    def update_state(self, true_target_word, predictions, sample_weight=None):
+        """Accumulates true positive, false positive and false negative statistics."""
+        if sample_weight is not None:
+            raise NotImplemented("WordsSubtokenMetricBase with non-None `sample_weight` is not implemented.")
+
+        top_predicted_words = self._get_top_predicted_words(predictions, 5)
+        self.true.assign_add(tf.keras.backend.sum(tf.cast(tf.equal(true_target_word, top_predicted_words), tf.float32)))
+        self.total.assign_add(tf.keras.backend.sum(tf.cast(tf.equal(true_target_word, true_target_word), tf.float32)))
+
+    def result(self):
+        return tf.math.divide_no_nan(self.true, self.total)
+
+    def reset_states(self):
+        for v in self.variables:
+            tf.keras.backend.set_value(v, 0)
 
 
 class GPUEmbedding(tf.keras.layers.Embedding):
@@ -96,7 +134,7 @@ class code2vec(tf.keras.Model, ABC):
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
             self.vector_model = tf.keras.Model(inputs=inputs, outputs=code_vectors)
-            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=self.custom_metrics,
+            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=[Precision()],
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
             # self.vector_model.compile()
             print(self.model.summary())
