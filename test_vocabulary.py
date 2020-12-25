@@ -29,7 +29,7 @@ def test_save_load_vocab():
 
 def test_create_lookup_table():
     freq_dict = {"a": 2, "c": 10, "int": 100, "A": 1}
-    vocab = Vocab.create_from_freq_dict(freq_dict)
+    vocab = Vocab.create_from_freq_dict(freq_dict, 0)
     w_t_i_lookup_table = vocab.get_word_to_index_lookup_table()
     i_t_w_lookup_table = vocab.get_index_to_word_lookup_table()
     for index, word in enumerate(["NOTHING", *sorted([freq_dict.keys()], key=lambda key: freq_dict[key])]):
@@ -40,7 +40,7 @@ def test_create_lookup_table():
 
 def test_create_c2v_vocab():
     config.config.CREATE_VOCAB = True
-    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
+    config.config.VEC_TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
     c2v_vocabs = Code2VecVocabs()
     c2v_vocabs.save("dump_c2v_vocabs.c2v.vocabs")
 

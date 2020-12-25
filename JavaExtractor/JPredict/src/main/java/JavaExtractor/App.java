@@ -27,13 +27,21 @@ public class App {
       ProgramRelation.setNoHash();
     }
 
-    if (s_CommandLineValues.File != null) {
-      ExtractFeaturesTask extractFeaturesTask =
-          new ExtractFeaturesTask(s_CommandLineValues, s_CommandLineValues.File.toPath());
-      extractFeaturesTask.run();
+    if (s_CommandLineValues.Preprocess == true) {
+      if (s_CommandLineValues.File != null) {
+        ExtractFeaturesTask extractFeaturesTask =
+            new ExtractFeaturesTask(s_CommandLineValues, s_CommandLineValues.File.toPath());
+        extractFeaturesTask.run();
 
-    } else if (s_CommandLineValues.Dir != null) {
-      extractDir();
+      } else if (s_CommandLineValues.Dir != null) {
+        extractDir();
+      }
+    } else {
+      if (s_CommandLineValues.File == null){
+        throw new IllegalArgumentException("For demonstration we need file to run net on.");
+      }
+      FileDeobfuscator deobfuscator = new FileDeobfuscator(s_CommandLineValues, s_CommandLineValues.File);
+      deobfuscator.deobfuscate();
     }
   }
 

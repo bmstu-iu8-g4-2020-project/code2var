@@ -11,7 +11,11 @@ import com.github.javaparser.ParseException;
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,20 +52,24 @@ public class FeatureExtractor {
     return upStack;
   }
 
-  public ArrayList<ProgramFeatures> extractFeatures(String code)
-      throws ParseException, IOException {
+  public static ArrayList<MethodContent> extractMethods(String code) throws IOException {
     CompilationUnit compilationUnit = parseFileWithRetries(code);
     FunctionVisitor functionVisitor = new FunctionVisitor();
-
     functionVisitor.visit(compilationUnit, null);
 
     ArrayList<MethodContent> methods = functionVisitor.getMethodContents();
+    return methods;
+  }
+
+  public ArrayList<ProgramFeatures> extractFeatures(String code)
+      throws ParseException, IOException {
+    ArrayList<MethodContent> methods = extractMethods(code);
     ArrayList<ProgramFeatures> programs = generatePathFeatures(methods);
 
     return programs;
   }
 
-  private CompilationUnit parseFileWithRetries(String code) throws IOException {
+  private static CompilationUnit parseFileWithRetries(String code) throws IOException {
     final String classPrefix = "public class Test {";
     final String classSuffix = "}";
     final String methodPrefix = "SomeUnknownReturnType f() {";
@@ -112,7 +120,7 @@ public class FeatureExtractor {
   private ProgramFeatures generatePathFeaturesForFunction(MethodContent methodContent) {
     ArrayList<Node> functionLeaves = methodContent.getLeaves();
     ProgramFeatures programFeatures =
-        new ProgramFeatures(methodContent.getName(), m_CommandLineValues);
+        new ProgramFeatures(methodContent.getName(), m_CommandLineValues, methodContent.getMethodName());
 
     for (int i = 0; i < functionLeaves.size(); i++) {
       for (int j = i + 1; j < functionLeaves.size(); j++) {
@@ -122,7 +130,7 @@ public class FeatureExtractor {
         if (path != Common.EmptyString) {
           Property source = functionLeaves.get(i).getUserData(Common.PropertyKey);
           Property target = functionLeaves.get(j).getUserData(Common.PropertyKey);
-          programFeatures.addFeature(source, path, target);
+          programFeatures.addFeature(source.getName(), path, target.getName());
         }
       }
     }
@@ -142,7 +150,7 @@ public class FeatureExtractor {
     for (Node varNode : variableLeaves) {
       String varName = ((VariableDeclaratorId) varNode).getName();
 
-      ProgramFeatures varFeatures = new ProgramFeatures(varName, m_CommandLineValues);
+      ProgramFeatures varFeatures = new ProgramFeatures(varName, m_CommandLineValues, methodContent.getMethodName());
       for (int i = 0; i < functionLeaves.size(); i++) {
         for (int j = i + 1; j < functionLeaves.size(); j++) {
           String separator = Common.EmptyString;
@@ -150,9 +158,9 @@ public class FeatureExtractor {
               || varName.equals(functionLeaves.get(j).toString())) {
             String path = generatePath(functionLeaves.get(i), functionLeaves.get(j), separator);
             if (path != Common.EmptyString) {
-              Property source = functionLeaves.get(i).getUserData(Common.PropertyKey);
-              Property target = functionLeaves.get(j).getUserData(Common.PropertyKey);
-              varFeatures.addFeature(source, path, target);
+              Node source = functionLeaves.get(i);
+              Node target = functionLeaves.get(j);
+              varFeatures.addFeature(source.toString(), path, target.toString());
             }
           }
         }

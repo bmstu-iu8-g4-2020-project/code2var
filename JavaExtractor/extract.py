@@ -26,20 +26,17 @@ def ExtractFeaturesForDir(args, dir, prefix):
     command = ["java", "-cp", args.jar, "JavaExtractor.App",
                "--max_path_length", str(args.max_path_length), "--max_path_width",
                str(args.max_path_width),
-               "--dir", dir, "--num_threads", str(args.num_threads)]
+               "--dir", dir, "--num_threads", str(args.num_threads), "--preprocess"]
+    suffix = ".vec.data.log"
     if args.only_vars:
         command += ["--variables"]
+        suffix = ".var.data.log"
     if args.obfuscate:
         command += ["--obfuscate"]
 
-    # print command
-    # os.system(" ".join(command))
-    # print(" ".join(command))
-    kill = lambda process: process.kill()
-    outputFileName = TMP_DIR + prefix + dir.split("/")[-1]
-    failed = False
-    with open(outputFileName, "a") as outputFile:
-        with open(prefix + dir + ".data.log", 'a') as o:
+    output_filename = f"{TMP_DIR}{prefix}{dir.split('/')[-1]}"
+    with open(output_filename, "a") as outputFile:
+        with open(f"{prefix}{dir}{suffix}", 'a') as o:
             print(command)
             sp = subprocess.Popen(command, stdout=o, stderr=subprocess.PIPE)
 
@@ -86,6 +83,7 @@ if __name__ == "__main__":
         command = ["java -cp", args.jar, "JavaExtractor.App", "--max_path_length ",
                    str(args.max_path_length), "--max_path_width",
                    str(args.max_path_width),
+                   "--preprocess",
                    "--file", args.file]
         if args.only_vars:
             command += ["--only_for_vars"]

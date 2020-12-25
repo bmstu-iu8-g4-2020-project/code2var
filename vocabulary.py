@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, BinaryIO, NamedTuple, Set
 import tensorflow as tf
 
 import config
+from preprocess import NetType
 
 basic_special_words = Namespace(NOTHING='NOTHING')
 
@@ -125,19 +126,22 @@ class Code2VecFreqDicts(NamedTuple):
 
 
 class Code2VecVocabs:
-    def __init__(self):
+    def __init__(self, net: NetType = NetType.code2vec):
         self.already_saved_paths: Set[str] = set()
         self.token_vocab: Optional[Vocab] = None
         self.path_vocab: Optional[Vocab] = None
         self.target_vocab: Optional[Vocab] = None
-
+        self.net = net
+        self.training_freq_dict_path = config.config.VEC_TRAINING_FREQ_DICTS_PATH
+        if self.net == NetType.code2var:
+            self.training_freq_dict_path = config.config.VAR_TRAINING_FREQ_DICTS_PATH
         if config.config.CREATE_VOCAB:
             self._create()
         else:
             self._load(config.config.CODE2VEC_VOCABS_PATH)
 
     def _create(self):
-        print("Creating vocab from", config.config.TRAINING_FREQ_DICTS_PATH)
+        print("Creating vocab from", self.training_freq_dict_path)
         freq_dicts = self._load_freq_dicts()
         print("Creating token vocab")
         self.token_vocab = Vocab.create_from_freq_dict(
@@ -154,9 +158,9 @@ class Code2VecVocabs:
         print("Created all vocabs")
 
     def _load_freq_dicts(self):
-        with open(config.config.TRAINING_FREQ_DICTS_PATH, "rb") as file:
+        with open(self.training_freq_dict_path, "rb") as file:
             print("Loading frequency dicts from",
-                  config.config.TRAINING_FREQ_DICTS_PATH)
+                  self.training_freq_dict_path)
             print("Loading token freq dict")
             token_freq_dict = pickle.load(file)
             print("Loading path freq dict")

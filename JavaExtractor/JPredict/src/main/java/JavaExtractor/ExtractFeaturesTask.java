@@ -4,28 +4,36 @@ import JavaExtractor.Common.CommandLineValues;
 import JavaExtractor.Common.Common;
 import JavaExtractor.FeaturesEntities.ProgramFeatures;
 import com.github.javaparser.ParseException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import spoon.Launcher;
 import spoon.SpoonException;
 import spoon.refactoring.CtRenameGenericVariableRefactoring;
+import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
+import spoon.reflect.reference.CtPackageReference;
 import spoon.support.compiler.VirtualFile;
+import spoon.support.reflect.declaration.CtMethodImpl;
+import spoon.support.reflect.reference.CtExecutableReferenceImpl;
+import spoon.support.reflect.reference.CtFieldReferenceImpl;
+import spoon.support.reflect.reference.CtTypeReferenceImpl;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ExtractFeaturesTask implements Runnable {
+  private static final int MAX_VAR_NUMBERS = 50;
   CommandLineValues m_CommandLineValues;
   Path filePath;
   String code;
 
-  HashMap<String, String> obfuscatedNames;
+  HashMap<String, HashMap<String, String>> obfuscatedNames;
+  ArrayList<Integer> freeIndexes;
+  Integer freeIndexesNumber;
 
   public ExtractFeaturesTask(CommandLineValues commandLineValues, Path path) {
     m_CommandLineValues = commandLineValues;
@@ -53,52 +61,126 @@ public class ExtractFeaturesTask implements Runnable {
   }
 
   public void obfuscateCode() {
-    try {
-      Collection<CtType<?>> allTypes = returnAllTypes(code);
 
-      StringBuilder stringBuilder = new StringBuilder();
+    Collection<CtType<?>> allTypes = returnAllTypes(code);
 
-      for (CtType<?> classOrInterface : allTypes) {
-        try {
-          String obfuscated = obfuscateToCtClass((CtClass<?>) classOrInterface).toString();
+    StringBuilder stringBuilder = new StringBuilder();
 
-          if (!obfuscated.equals("")) {
-            stringBuilder.append(obfuscated).append("\n\n");
-          }
-        } catch (ClassCastException e) {
-          //                System.out.println("Сouldn't cast to class, might be interface");
-        }
+    for (CtType<?> classOrInterface : allTypes) {
+      Set<CtType<?>> a = classOrInterface.getNestedTypes();
+      if (a.size() != 0) {
+        throw new NotImplementedException(
+            "Now we can't parse class with classes inside." + filePath);
       }
-      code = stringBuilder.append("\n\n").toString();
-    } catch (Exception e) {
-      //            System.out.println("Ignored: " + e.getMessage());
+      String obfuscated = obfuscateToCtClass((CtClass<?>) classOrInterface).toString();
+
+      if (!obfuscated.equals("")) {
+        stringBuilder.append(obfuscated).append("\n\n");
+      }
     }
+    code = stringBuilder.append("\n\n").toString();
   }
 
   private CtClass obfuscateToCtClass(CtClass newClass) {
     try {
       for (Object oMethod : newClass.getMethods()) {
-        CtMethod method = (CtMethod) oMethod;
+        try {
+          CtMethod method = (CtMethod) oMethod;
+          List<CtElement> el = method.getElements(ctElement -> true);
+          freeIndexes =
+              (ArrayList<Integer>)
+                  IntStream.rangeClosed(0, MAX_VAR_NUMBERS - 1)
+                      .boxed()
+                      .collect(Collectors.toList());
+          freeIndexesNumber = MAX_VAR_NUMBERS;
 
-        method
-            .getElements(
-                element ->
-                    element.getClass() == spoon.support.reflect.declaration.CtParameterImpl.class)
-            .forEach(
-                parameter -> {
-                  CtParameter param = (CtParameter) parameter;
-                  obfuscateVariable(param);
-                });
+          method
+              .getElements(
+                  element ->
+                      element.getClass() == spoon.support.reflect.declaration.CtParameterImpl.class)
+              .forEach(
+                  parameter -> {
+                    CtParameter param = (CtParameter) parameter;
+                    obfuscateVariable(method, param);
+                  });
 
-        method
-            .getElements(
-                element ->
-                    element.getClass() == spoon.support.reflect.code.CtLocalVariableImpl.class)
-            .forEach(
-                variable -> {
-                  CtVariable var = (CtVariable) variable;
-                  obfuscateVariable(var);
-                });
+          method
+              .getElements(
+                  element ->
+                      element.getClass() == spoon.support.reflect.code.CtLocalVariableImpl.class
+                          || element.getClass()
+                              == spoon.support.reflect.code.CtCatchVariableImpl.class)
+              .forEach(
+                  variable -> {
+                    CtVariable var = (CtVariable) variable;
+                    obfuscateVariable(method, var);
+                  });
+          method
+              .getElements(
+                  element ->
+                      element.getClass()
+                          == spoon.support.reflect.reference.CtTypeReferenceImpl.class)
+              .forEach(
+                  typeDecl -> {
+                    CtTypeReferenceImpl typeReference = (CtTypeReferenceImpl) typeDecl;
+                    CtPackageReference type = typeReference.getPackage();
+                    if (!(typeReference.getPackage() == null
+                        || typeReference.getPackage().getSimpleName().startsWith("java."))) {
+                      typeReference.setSimpleName("SOMETYPE");
+                    }
+                  });
+
+          method
+              .getElements(element -> element.getClass() == CtExecutableReferenceImpl.class)
+              .forEach(
+                  function -> {
+                    CtExecutableReferenceImpl func = (CtExecutableReferenceImpl) function;
+                    func.setSimpleName("FUNC");
+                  });
+          method
+              .getElements(element -> element.getClass() == CtMethodImpl.class)
+              .forEach(
+                  function -> {
+                    CtMethodImpl func = (CtMethodImpl) function;
+                    if (func != method) {
+                      func.setSimpleName("FUNC");
+                    }
+                  });
+
+          method
+              .getElements(
+                  element -> element.getClass() == spoon.support.reflect.code.CtLiteralImpl.class)
+              .forEach(
+                  element -> {
+                    CtLiteral literal = (CtLiteral) element;
+                    if (literal.getValue() == null) {
+                      literal.setValue("NULL");
+                    } else if (!(literal.getValue().equals(1)
+                        || literal.getValue().equals(0)
+                        || literal.getValue().equals(Integer.MAX_VALUE)
+                        || literal.getValue().equals(Float.NaN)
+                        || literal.getValue().equals(Common.EmptyString))) {
+                      literal.setValue("CONSTANT");
+                    } else {
+                      System.err.println(literal.getValue());
+                    }
+                  });
+
+          method
+              .getElements(
+                  element ->
+                      element.getClass()
+                          == spoon.support.reflect.reference.CtFieldReferenceImpl.class)
+              .forEach(
+                  element -> {
+                    CtFieldReferenceImpl field = (CtFieldReferenceImpl) element;
+                    field.setSimpleName("CLASS_FIELD");
+                  });
+          el = method.getElements(ctElement -> true);
+
+        } catch (RuntimeException e) {
+          newClass.removeMethod((CtMethod) oMethod);
+        }
       }
       return newClass;
     } catch (SpoonException e) {
@@ -111,29 +193,38 @@ public class ExtractFeaturesTask implements Runnable {
     }
   }
 
-  private void obfuscateVariable(CtVariable var) {
+  private void obfuscateVariable(CtMethod method, CtVariable var) {
     if (var == null || var.getType() == null) {
       return;
     }
-    String newName = generateName(12);
+    if (!obfuscatedNames.containsKey(method.getSimpleName())) {
+      obfuscatedNames.put(method.getSimpleName(), new HashMap<>());
+    }
 
-    obfuscatedNames.put(newName, var.getSimpleName());
+    String newName = generateName("VAR_");
+    obfuscatedNames.get(method.getSimpleName()).put(newName, var.getSimpleName());
     new CtRenameGenericVariableRefactoring().setTarget(var).setNewName(newName).refactor();
   }
 
-  private String generateName(int length) {
-    StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < length; i++) {
-      stringBuilder.append((char) ('a' + (int) (Math.random() * 26)));
+  private String generateName(String prefix) {
+    if (freeIndexesNumber == 0) {
+      throw new RuntimeException("Too many different objects for prefix." + prefix);
     }
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append(prefix);
+    int varIdx = (int) (Math.random() * freeIndexesNumber);
+    stringBuilder.append(freeIndexes.get(varIdx));
+    freeIndexes.remove(varIdx);
+    freeIndexesNumber--;
     return stringBuilder.toString();
   }
 
-  private Collection<CtType<?>> returnAllTypes(String code) {
+  public static Collection<CtType<?>> returnAllTypes(String code) {
     Launcher launcher = new Launcher();
     launcher.addInputResource(new VirtualFile(code));
     launcher.getEnvironment().setNoClasspath(true);
     launcher.getEnvironment().setAutoImports(true);
+    launcher.getEnvironment().setCommentEnabled(false);
     return launcher.buildModel().getAllTypes();
   }
 
@@ -163,8 +254,10 @@ public class ExtractFeaturesTask implements Runnable {
     if (m_CommandLineValues.OnlyVars) {
       for (ProgramFeatures feature : features) {
         String originalName = feature.getName();
-        if (m_CommandLineValues.Obfuscate && obfuscatedNames.get(originalName) != null) {
-          feature.setName(obfuscatedNames.get(originalName));
+        if (m_CommandLineValues.Obfuscate
+            && obfuscatedNames.get(feature.getMethodName()) != null
+            && obfuscatedNames.get(feature.getMethodName()).get(originalName) != null) {
+          feature.setName(obfuscatedNames.get(feature.getMethodName()).get(originalName));
         }
         ArrayList<String> splitNameParts = Common.splitToSubtokens(feature.getName());
         String splitName = feature.getName();
@@ -172,6 +265,11 @@ public class ExtractFeaturesTask implements Runnable {
           splitName = splitNameParts.stream().collect(Collectors.joining(Common.internalSeparator));
         }
         feature.setName(splitName);
+      }
+    }
+    for (ProgramFeatures feature: features){
+      if (feature.getName().equals("func")){
+        feature.isEmpty();
       }
     }
     return features;

@@ -13,7 +13,7 @@ if [ $# -eq 2 ]
   then
     CHECKPOINTS_DIR=$2
     mkdir $2
-    ${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME --checkpoints_dir $CHECKPOINTS_DIR --net var --train true
+    ${PYTHON} code2var.py --dataset $DATASET_NAME --checkpoints_dir $CHECKPOINTS_DIR --net var --train true
   else
-    ${PYTHON} code2vec_train_model.py --dataset $DATASET_NAME --net var --train true
+    ${PYTHON} code2var.py --dataset $DATASET_NAME --net var --train true
 fi
