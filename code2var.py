@@ -7,10 +7,49 @@ import tensorflow as tf
 from abc import ABC
 from argparse import ArgumentParser
 from tensorflow.python.framework import config as tf_config
-from tensorflow.python.keras.utils import tf_utils
-from typing import List
+from tensorflow.python.keras.utils import tf_utils, metrics_utils
+from typing import List, Optional, Callable
 from path_context_reader import PathContextReader
+from preprocess import NetType
 from vocabulary import Code2VecVocabs
+from functools import reduce
+
+
+class Precision(tf.metrics.Metric):
+    FilterType = Callable[[tf.Tensor, tf.Tensor], tf.Tensor]
+
+    def __init__(self,
+                 index_to_word_table: Optional[tf.lookup.StaticHashTable] = None,
+                 topk_predicted_words=None,
+                 predicted_words_filters: Optional[List[FilterType]] = None,
+                 subtokens_delimiter: str = '|', name=None, dtype=None):
+        super(Precision, self).__init__(name=name, dtype=dtype)
+        self.true = self.add_weight('true', shape=(), initializer=tf.zeros_initializer)
+        self.total = self.add_weight('total', shape=(), initializer=tf.zeros_initializer)
+        self.index_to_word_table = index_to_word_table
+        self.topk_predicted_words = topk_predicted_words
+        self.predicted_words_filters = predicted_words_filters
+        self.subtokens_delimiter = subtokens_delimiter
+
+    @tf.function
+    def _get_top_predicted_words(self, predictions, k):
+        return tf.nn.top_k(predictions, k=k, sorted=True).indices
+
+    def update_state(self, true_target_word, predictions, sample_weight=None):
+        """Accumulates true positive, false positive and false negative statistics."""
+        if sample_weight is not None:
+            raise NotImplemented("WordsSubtokenMetricBase with non-None `sample_weight` is not implemented.")
+
+        top_predicted_words = self._get_top_predicted_words(predictions, 5)
+        self.true.assign_add(tf.keras.backend.sum(tf.cast(tf.equal(true_target_word, top_predicted_words), tf.float32)))
+        self.total.assign_add(tf.keras.backend.sum(tf.cast(tf.equal(true_target_word, true_target_word), tf.float32)))
+
+    def result(self):
+        return tf.math.divide_no_nan(self.true, self.total)
+
+    def reset_states(self):
+        for v in self.variables:
+            tf.keras.backend.set_value(v, 0)
 
 
 class GPUEmbedding(tf.keras.layers.Embedding):
@@ -34,6 +73,7 @@ class code2vec(tf.keras.Model, ABC):
                  token_vocab_size,
                  target_vocab_size,
                  path_vocab_size,
+                 custom_metrics: List,
                  max_contexts=config.config.MAX_CONTEXTS,
                  token_embed_dim=config.config.TOKEN_EMBED_DIMENSION,
                  path_embed_dim=config.config.PATH_EMBED_DIMENSION,
@@ -47,6 +87,7 @@ class code2vec(tf.keras.Model, ABC):
         self.path_embed_dim: int = path_embed_dim
         self.dropout_rate: float = 1 - dropout_keep_rate
         self.code_embed_dim: int = 2 * self.token_embed_dim + self.path_embed_dim
+        self.custom_metrics = custom_metrics
         self.history = None
         self.model = None  # TODO (RKulagin): look at tf github and check, how they store models
         self.vector_model = None
@@ -93,10 +134,48 @@ class code2vec(tf.keras.Model, ABC):
             inputs = [token_source_embed_model.input, path_embed_model.input, token_target_embed_model.input]
             self.model = tf.keras.Model(inputs=inputs, outputs=possible_targets)
             self.vector_model = tf.keras.Model(inputs=inputs, outputs=code_vectors)
-            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'],
+            self.model.compile(optimizer=tf.keras.optimizers.Adam(), metrics=[Precision()],
                                loss=tf.keras.losses.SparseCategoricalCrossentropy())
             # self.vector_model.compile()
             print(self.model.summary())
+            tf.keras.utils.plot_model(self.model, show_shapes=True)
+
+    @staticmethod
+    def recall(y_true, y_pred):
+        """Recall metric.
+
+        Only computes a batch-wise average of recall.
+
+        Computes the recall, a metric for multi-label classification of
+        how many relevant items are selected.
+        """
+
+        true_positives = tf.keras.backend.sum(tf.keras.backend.round(
+            tf.keras.backend.clip(tf.cast(
+                tf.cast(tf.keras.backend.transpose(y_true), tf.dtypes.int64) == tf.keras.backend.argmax(y_pred, axis=1),
+                tf.dtypes.float32), 0, 1)))
+        possible_positives = tf.keras.backend.sum(tf.keras.backend.round(
+            tf.keras.backend.clip(tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_true, axis=1),
+                                          tf.dtypes.float32), 0, 1)))
+        # tf.keras.backend.print_tensor(
+        #     tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_pred, axis=1), tf.dtypes.float32))
+        # tf.keras.backend.print_tensor(
+        #
+        #     tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_true, axis=1), tf.dtypes.float32))
+        # tf.keras.backend.print_tensor(
+        #     true_positives)
+        # tf.keras.backend.print_tensor(
+        #     possible_positives)
+        # tf.keras.backend.print_tensor(y_true)
+        # tf.keras.backend.print_tensor(tf.keras.backend.argmax(y_true, axis=1))
+        # tf.keras.backend.print_tensor(tf.keras.backend.argmax(y_pred, axis=1))
+        recall = true_positives / (possible_positives + tf.keras.backend.epsilon())
+        return recall
+
+    @staticmethod
+    def f1(y_true, y_pred):
+        return tf.keras.backend.sum(
+            tf.cast(tf.keras.backend.argmax(y_true, axis=1) == tf.keras.backend.argmax(y_pred, axis=1), tf.dtypes.int32))
 
     def get_vector(self, inputs):
         return self.vector_model(inputs)
@@ -165,7 +244,8 @@ if __name__ == "__main__":
 
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     if args.train:
-        c2v_vocabs = Code2VecVocabs()
+        print(f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
+        c2v_vocabs = Code2VecVocabs(net=NetType(args.net))
         pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
                                 csv_path=f"dataset/{args.dataset_name}/{args.dataset_name}.{args.net}.csv")
         dataset = pcr.get_dataset()
@@ -182,9 +262,10 @@ if __name__ == "__main__":
         tf.random.set_seed(42)
         model = code2vec(token_vocab_size=TOKEN_VOCAB_SIZE,
                          target_vocab_size=TARGET_VOCAB_SIZE,
-                         path_vocab_size=PATH_VOCAB_SIZE)
+                         path_vocab_size=PATH_VOCAB_SIZE,
+                         custom_metrics=["accuracy"])
 
-        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}-{val_loss:.2f}.hdf5"
+        checkpoint_path = f"{args.checkpoints_dir}/" + "cp-{epoch:04d}-{loss:.2f}.hdf5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
 
         callbacks = [tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -196,17 +277,33 @@ if __name__ == "__main__":
 
                      tf.keras.callbacks.CSVLogger('training.log')
                      ]
-        model.train(dataset, 100, callbacks, validation_data=val_dataset)
+        model.train(dataset, 100, callbacks, validation_data=val_dataset, validation_freq=3)
 
     if args.run:
-        model = code2vec(token_vocab_size=config.config.NET_TOKEN_SIZE,
-                         target_vocab_size=config.config.NET_TARGET_SIZE,
-                         path_vocab_size=config.config.NET_PATH_SIZE)
-        model.load_weights("training/cp-0023.hdf5")
+        tokens_numbers, target_numbers, path_numbers = 0, 0, 0
+        model_path = ""
+        if args.net == "vec":
+            tokens_numbers = config.config.VEC_NET_TOKEN_SIZE
+            target_numbers = config.config.VEC_NET_TARGET_SIZE
+            path_numbers = config.config.VEC_NET_PATH_SIZE
+            model_path = "cp-0006-3.17/cp-0006-3.17.hdf5"
+            # model_path = "training-med-vec-cutted/cp-0010-3.02.hdf5"
+        elif args.net == "var":
+            tokens_numbers = config.config.VAR_NET_TOKEN_SIZE
+            target_numbers = config.config.VAR_NET_TARGET_SIZE
+            path_numbers = config.config.VAR_NET_PATH_SIZE
+            # model_path = "training/cp-0023.hdf5"
+            model_path = "training-sm-var/cp-0002-2.67.hdf5"
+        model = code2vec(token_vocab_size=tokens_numbers,
+                         target_vocab_size=target_numbers,
+                         path_vocab_size=path_numbers,
+                         custom_metrics=[Precision()])
+        # model.load_weights("training-code2var-vec/cp-0002-1.91.hdf5")
+        model.load_weights(model_path)
 
-        c2v_vocabs = Code2VecVocabs()
+        c2v_vocabs = Code2VecVocabs(NetType(args.net))
         pcr = PathContextReader(is_train=False, vocabs=c2v_vocabs,
-                                csv_path=f"tmp_data_for_code2var/data.var.csv")
+                                csv_path=f"tmp_data_for_code2var/data.{args.net}.csv")
         dataset = pcr.get_dataset()
         for line, target in dataset:
             result = model(line)
@@ -214,6 +311,6 @@ if __name__ == "__main__":
             prediction_index = prediction_index[0][:-1 - config.config.NUMBER_OF_PREDICTIONS:-1]
             prediction = c2v_vocabs.target_vocab.get_index_to_word_lookup_table().lookup(tf.constant(prediction_index))
             print(target.numpy(), "->", prediction.numpy())
-            with open("tmp_data_for_code2var/result.csv", 'a', encoding='utf8') as file:
+            with open(f"tmp_data_for_code2var/result.{args.net}.csv", 'a', encoding='utf8') as file:
                 writer = csv.writer(file)
                 writer.writerow(np.concatenate([target.numpy().astype("U"), prediction.numpy().astype('U')]))

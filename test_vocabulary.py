@@ -40,7 +40,7 @@ def test_create_lookup_table():
 
 def test_create_c2v_vocab():
     config.config.CREATE_VOCAB = True
-    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
+    config.config.VEC_TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
     c2v_vocabs = Code2VecVocabs()
     c2v_vocabs.save("dump_c2v_vocabs.c2v.vocabs")
 

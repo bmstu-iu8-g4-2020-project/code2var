@@ -267,6 +267,11 @@ public class ExtractFeaturesTask implements Runnable {
         feature.setName(splitName);
       }
     }
+    for (ProgramFeatures feature: features){
+      if (feature.getName().equals("func")){
+        feature.isEmpty();
+      }
+    }
     return features;
   }
 

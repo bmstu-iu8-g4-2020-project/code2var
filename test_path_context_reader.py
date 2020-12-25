@@ -10,7 +10,7 @@ from vocabulary import Code2VecVocabs
 
 def test_get_dataset():
     config.config.CREATE_VOCAB = True
-    config.config.TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
+    config.config.VEC_TRAINING_FREQ_DICTS_PATH = "dataset/java-small.c2v.dict"
     c2v_vocabs = Code2VecVocabs()
     pcr = PathContextReader(is_train=True, vocabs=c2v_vocabs,
                             csv_path="dataset/java-small.train_vec.csv")
